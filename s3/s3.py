@@ -1,17 +1,6 @@
-import os
-
 import boto3
-import botocore
-
-KEY = os.environ.get("AWS_ACCESS_KEY_ID")
-SECRET = os.environ.get("AWS_SECRET_ACCESS_KEY")
-BUCKET_NAME = os.environ.get("AWS_S3_BUCKET_NAME")
-
-S3 = boto3.client(
-    's3',
-    aws_access_key_id=KEY,
-    aws_secret_access_key=SECRET
-)
+from botocore.client import BaseClient
+from botocore.exceptions import ClientError
 
 
 class S3Exception(Exception):
@@ -20,12 +9,22 @@ class S3Exception(Exception):
     pass
 
 
-def fetch(s3_uri: str) -> None:
-    """Collect data from S3 URI."""
+def connect(key: str, secret: str) -> BaseClient:
+    """Create a Boto3 client for S3 service."""
+    client = boto3.client(
+        's3',
+        aws_access_key_id=key,
+        aws_secret_access_key=secret
+    )
+    return client
+
+
+def fetch(client: BaseClient, bucket: str, s3_uri: str) -> None:
+    """Collect a file from S3 URI."""
     # Download the file
     try:
-        data = S3.get_object(Bucket=BUCKET_NAME, Key=s3_uri)
-    except botocore.exceptions.ClientError as exception:
+        data = client.get_object(Bucket=bucket, Key=s3_uri)
+    except ClientError as exception:
         raise S3Exception(exception)
 
     return data
