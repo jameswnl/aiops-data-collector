@@ -50,14 +50,15 @@ def index():
     next_service = APP.config['NEXT_MICROSERVICE_URL']
 
     # Collect data
+    response = dict()
     try:
         logger.info('Collecting data on url: %s', input_data['url'])
-        data = {
-            'status': 'Collected',
-            'data': s3.fetch(client, bucket, input_data['url'])
-        }
+        response['data'] = s3.fetch(client, bucket, input_data['url'])
+
         logger.info('Done')
-        hit_next_in_pipepine(next_service, data)
+        response['status'] = 'Collected'
+
+        hit_next_in_pipepine(next_service, response)
 
     except s3.S3Exception as exception:
         logger.warning(exception)
