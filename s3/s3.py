@@ -1,30 +1,28 @@
-import boto3
-from botocore.client import BaseClient
-from botocore.exceptions import ClientError
+from s3fs import S3FileSystem
+from fastparquet import ParquetFile
+from pandas import DataFrame
 
-
-class S3Exception(Exception):
-    """Custom exception for S3 error purposes."""
-
-    pass
-
-
-def connect(key: str, secret: str) -> BaseClient:
+def connect(key: str, secret: str) -> S3FileSystem:
     """Create a Boto3 client for S3 service."""
-    client = boto3.client(
-        's3',
+    filesystem = S3FileSystem(
         aws_access_key_id=key,
         aws_secret_access_key=secret
     )
-    return client
+    return filesystem
 
 
-def fetch(client: BaseClient, bucket: str, s3_uri: str) -> None:
+def fetch(filesystem: S3FileSystem, bucket: str, s3_uri: str) -> DataFrame:
     """Collect a file from S3 URI."""
-    # Download the file
-    try:
-        data = client.get_object(Bucket=bucket, Key=s3_uri)
-    except ClientError as exception:
-        raise S3Exception(exception)
+    # Remove leading and trailing "/"
+    s3_uri = s3_uri.strip('/')
+    # Find all files on s3_uri in bucket
+    paths = filesystem.glob(f'/{bucket}/{s3_uri}/*.parquet')
 
-    return data
+    if not paths:
+        raise FileExistsError(
+            f'Bucket {bucket} contains no files matching "{s3_uri}" URI'
+        )
+
+    # Download dataframe
+    parquet = ParquetFile(paths, open_with=filesystem.open)
+    return parquet.to_pandas()

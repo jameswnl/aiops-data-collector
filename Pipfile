@@ -5,9 +5,13 @@ name = "pypi"
 
 [packages]
 flask = "*"
-"boto3" = "*"
 gunicorn = "*"
 requests = "*"
+fastparquet = "*"
+python-snappy = "*"
+pandas = "*"
+"s3fs" = "*"
+numpy = "*"
 
 [dev-packages]
 pylama = "*"

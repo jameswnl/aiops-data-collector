@@ -4,7 +4,6 @@ from json import dumps
 
 from flask import Flask, jsonify, request
 import requests
-
 import s3
 
 logger = logging.getLogger(__name__)
@@ -17,7 +16,7 @@ def create_application():
     aws_key = os.environ.get('AWS_ACCESS_KEY_ID')
     aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY')
 
-    app.config['AWS_S3_CLIENT'] = s3.connect(aws_key, aws_secret)
+    app.config['AWS_S3_FILESYSTEM'] = s3.connect(aws_key, aws_secret)
     app.config['AWS_S3_BUCKET_NAME'] = os.environ.get('AWS_S3_BUCKET_NAME')
     app.config['NEXT_MICROSERVICE_HOST'] = \
         os.environ.get('NEXT_MICROSERVICE_HOST')
@@ -47,21 +46,21 @@ def hit_next_in_pipepine(payload: dict) -> None:
 def index():
     """Endpoint servicing data collection."""
     input_data = request.get_json(force=True)
-    client = APP.config['AWS_S3_CLIENT']
+    filesystem = APP.config['AWS_S3_FILESYSTEM']
     bucket = APP.config['AWS_S3_BUCKET_NAME']
 
     # Collect data
     response = dict()
     try:
         logger.info('Collecting data on url: %s', input_data['url'])
-        response['data'] = s3.fetch(client, bucket, input_data['url'])
+        response['data'] = s3.fetch(filesystem, bucket, input_data['url'])
 
         logger.info('Done')
         response['status'] = 'Collected'
 
         hit_next_in_pipepine(response)
 
-    except s3.S3Exception as exception:
+    except FileNotFoundError as exception:
         logger.warning(exception)
         return jsonify(status="FAILED", exception=str(exception)), 400
 
