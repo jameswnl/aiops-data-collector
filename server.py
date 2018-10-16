@@ -19,8 +19,8 @@ def create_application():
 
     app.config['AWS_S3_CLIENT'] = s3.connect(aws_key, aws_secret)
     app.config['AWS_S3_BUCKET_NAME'] = os.environ.get('AWS_S3_BUCKET_NAME')
-    app.config['NEXT_MICROSERVICE_URL'] = \
-        os.environ.get('NEXT_MICROSERVICE_URL', '127.0.0.1:8080')
+    app.config['NEXT_MICROSERVICE_HOST'] = \
+        os.environ.get('NEXT_MICROSERVICE_HOST')
 
     return app
 
@@ -28,13 +28,15 @@ def create_application():
 APP = create_application()
 
 
-def hit_next_in_pipepine(url: str, payload: dict) -> None:
+def hit_next_in_pipepine(payload: dict) -> None:
     """Pass the data to next service in line."""
     # Do not wait for response now, so we can keep listening
     # FIXME: Convert to aiohttp or some other async requests alternative
+    host = APP.config['NEXT_MICROSERVICE_HOST']
+
     try:
         data = dumps(payload, default=str)
-        requests.post(url, json=data, timeout=10)
+        requests.post(f'http://{host}', json=data, timeout=10)
     except requests.exceptions.ReadTimeout:
         pass
     except requests.exceptions.ConnectionError as e:
@@ -47,7 +49,6 @@ def index():
     input_data = request.get_json(force=True)
     client = APP.config['AWS_S3_CLIENT']
     bucket = APP.config['AWS_S3_BUCKET_NAME']
-    next_service = APP.config['NEXT_MICROSERVICE_URL']
 
     # Collect data
     response = dict()
@@ -58,7 +59,7 @@ def index():
         logger.info('Done')
         response['status'] = 'Collected'
 
-        hit_next_in_pipepine(next_service, response)
+        hit_next_in_pipepine(response)
 
     except s3.S3Exception as exception:
         logger.warning(exception)
