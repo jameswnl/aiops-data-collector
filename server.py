@@ -2,12 +2,10 @@ import logging
 import os
 
 from flask import Flask, jsonify, request
+from flask.logging import default_handler
 
 import s3
 import workers
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
 def create_application():
@@ -24,6 +22,9 @@ def create_application():
 
 
 APP = create_application()
+ROOT_LOGGER = logging.getLogger()
+ROOT_LOGGER.setLevel(APP.logger.level)
+ROOT_LOGGER.addHandler(default_handler)
 
 
 @APP.route("/", methods=['POST'])
@@ -35,16 +36,16 @@ def index():
     next_service = APP.config['NEXT_MICROSERVICE_HOST']
 
     try:
-        logger.info('Peeking files on uri %s', input_data['url'])
+        APP.logger.info('Peeking files on uri %s', input_data['url'])
         s3.list_files(filesystem, bucket, input_data['url'])
 
         workers.download_and_pass_data_thread(
             filesystem, bucket, input_data['url'], next_service
         )
-        logger.info('Files found, job started.')
+        APP.logger.info('Files found, job started.')
 
     except FileNotFoundError as exception:
-        logger.warning(exception)
+        APP.logger.warning(exception)
         return jsonify(status="FAILED", exception=str(exception)), 400
 
     return jsonify(status="OK", message="Job initiated")
