@@ -1,13 +1,13 @@
 import logging
 import os
-from json import dumps
 
 from flask import Flask, jsonify, request
-import requests
+
 import s3
+import workers
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 def create_application():
@@ -15,7 +15,6 @@ def create_application():
     app = Flask(__name__)
     aws_key = os.environ.get('AWS_ACCESS_KEY_ID')
     aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY')
-
     app.config['AWS_S3_FILESYSTEM'] = s3.connect(aws_key, aws_secret)
     app.config['AWS_S3_BUCKET_NAME'] = os.environ.get('AWS_S3_BUCKET_NAME')
     app.config['NEXT_MICROSERVICE_HOST'] = \
@@ -27,44 +26,28 @@ def create_application():
 APP = create_application()
 
 
-def hit_next_in_pipepine(payload: dict) -> None:
-    """Pass the data to next service in line."""
-    # Do not wait for response now, so we can keep listening
-    # FIXME: Convert to aiohttp or some other async requests alternative
-    host = APP.config['NEXT_MICROSERVICE_HOST']
-
-    try:
-        data = dumps(payload, default=str)
-        requests.post(f'http://{host}', json=data, timeout=10)
-    except requests.exceptions.ReadTimeout:
-        pass
-    except requests.exceptions.ConnectionError as e:
-        logger.warning('Call to next service failed: %s', str(e))
-
-
-@APP.route("/", methods=['POST', 'PUT'])
+@APP.route("/", methods=['POST'])
 def index():
     """Endpoint servicing data collection."""
     input_data = request.get_json(force=True)
     filesystem = APP.config['AWS_S3_FILESYSTEM']
     bucket = APP.config['AWS_S3_BUCKET_NAME']
+    next_service = APP.config['NEXT_MICROSERVICE_HOST']
 
-    # Collect data
-    response = dict()
     try:
-        logger.info('Collecting data on url: %s', input_data['url'])
-        response['data'] = s3.fetch(filesystem, bucket, input_data['url'])
+        logger.info('Peeking files on uri %s', input_data['url'])
+        s3.list_files(filesystem, bucket, input_data['url'])
 
-        logger.info('Done')
-        response['status'] = 'Collected'
-
-        hit_next_in_pipepine(response)
+        workers.download_and_pass_data_thread(
+            filesystem, bucket, input_data['url'], next_service
+        )
+        logger.info('Files found, job started.')
 
     except FileNotFoundError as exception:
         logger.warning(exception)
         return jsonify(status="FAILED", exception=str(exception)), 400
 
-    return jsonify(status="OK")
+    return jsonify(status="OK", message="Job initiated")
 
 
 if __name__ == "__main__":
