@@ -1,5 +1,6 @@
 import logging
 from threading import Thread, current_thread
+from json import dumps
 
 import requests
 
@@ -19,12 +20,24 @@ def download_and_pass_data_thread(filesystem, bucket, uri, next_service):
         logger.info('%s: Worker started', thread.name)
         try:
             # Fetch data
-            data = s3.fetch(filesystem, bucket, uri)
+            s3_data = s3.fetch(filesystem, bucket, uri)
+            logger.info(
+                '%s: Downloaded records %s',
+                thread.name,
+                s3_data.shape
+            )
+
+            # Build the POST data object
+            data = {
+                'data': s3_data.to_dict(),
+                # Set data identifier (for now, should be handled better)
+                'id': uri.split('/')[0]
+            }
+
             # Pass to next service
-            logger.info('%s: Downloaded records %s', thread.name, data.shape)
             requests.post(
                 f'http://{next_service}',
-                data=data.to_json(),
+                data=dumps(data),
                 headers=HEADERS
             )
         except FileNotFoundError as exception:
