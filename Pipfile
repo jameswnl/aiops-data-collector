@@ -14,6 +14,10 @@ pandas = "*"
 numpy = "*"
 
 [dev-packages]
+pytest = "*"
+coverage = "*"
+pytest-mock = "*"
+pytest-cov = "*"
 pylama = "*"
 pylama-pylint = "*"
 
