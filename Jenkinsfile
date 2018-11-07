@@ -25,7 +25,6 @@ userPath = '/home/jenkins/.local/bin'
 lockErrorRegex = /.*Your Pipfile.lock \(\S+\) is out of date. Expected: \(\S+\).*/
 lockError = "\n* `Pipfile.lock` is out of sync. Run '`pipenv lock`' and commit the changes."
 installError = "\n* '`pipenv install`' has failed."
-pyContainer = "python3"
 
 // Code coverage failure threshold
 codecovThreshold = 0
@@ -215,40 +214,28 @@ def runStages() {
     podTemplate(label: podLabel, slaveConnectTimeout: 120, cloud: 'openshift', containers: [
         containerTemplate(
             name: 'jnlp',
-            image: 'registry.access.redhat.com/openshift3/jenkins-slave-base-rhel7',
+            image: 'docker-registry.default.svc:5000/jenkins/jenkins-slave-base-centos7-python36',
             args: '${computer.jnlpmac} ${computer.name}',
-            resourceRequestCpu: '200m',
-            resourceLimitCpu: '500m',
-            resourceRequestMemory: '256Mi',
-            resourceLimitMemory: '512Mi'
-        ),
-        containerTemplate(
-            name: pyContainer,
-            image: 'python:3.6.6',
-            ttyEnabled: true,
-            command: 'cat',
             resourceRequestCpu: '200m',
             resourceLimitCpu: '1000m',
             resourceRequestMemory: '256Mi',
             resourceLimitMemory: '1Gi'
-        )
+        ),
     ]) {
         node(podLabel) {
             // check out source again to get it in this node's workspace
             scmVars = checkout scm
 
-            container(pyContainer) {
-                stage('Pip install') {
-                    runPipInstall(scmVars)
-                }
+            stage('Pip install') {
+                runPipInstall(scmVars)
+            }
 
-                stage('UnitTest') {
-                    runUnitTests()
-                }
+            stage('UnitTest') {
+                runUnitTests()
+            }
 
-                stage('Code coverage') {
-                    checkCoverage()
-                }
+            stage('Code coverage') {
+                checkCoverage()
             }
 
             if (currentBuild.currentResult == 'SUCCESS') {
