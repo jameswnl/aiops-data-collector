@@ -11,7 +11,7 @@
 // Some constants...
 
 // Name for auto-generated openshift pod
-podLabel = "aiops-data-collector-test-${UUID.randomUUID().toString()}"
+podLabel = "aiops-test-${UUID.randomUUID().toString()}"
 
 // Status contexts for Github
 unitTestContext = "continuous-integration/jenkins/unittest"
