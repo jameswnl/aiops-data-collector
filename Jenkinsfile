@@ -38,7 +38,7 @@ def runStages() {
         }
 
         stage('Code coverage') {
-            checkCoverage()
+            checkCoverage(threshold: codecovThreshold)
         }
 
         if (currentBuild.currentResult == 'SUCCESS') {
