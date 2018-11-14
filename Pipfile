@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 flask = "*"
 gunicorn = "*"
-requests = "*"
+requests = ">=2.20.0"
 fastparquet = "*"
 python-snappy = "*"
 pandas = "*"
