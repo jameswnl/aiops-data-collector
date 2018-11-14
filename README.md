@@ -1,47 +1,28 @@
-# AI-Ops data collector
+# AI-Ops: Data collector microservice
 
-Fetch data from S3 bucket and pass it to AI service
+[![Build Status](https://travis-ci.org/ManageIQ/aiops-data-collector.svg?branch=master)](https://travis-ci.org/ManageIQ/aiops-data-collector)
+[![License](https://img.shields.io/badge/license-APACHE2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 
-## OpenShift Deployment
+Thin Flask server collecting data from S3 on demand and streaming it through the pipeline
 
-Please consult [`aiops-deploy` repository](https://github.com/tumido/aiops-deploy) for deployment scheme.
+## Get Started
 
-# Local build
+* Learn about other services within our pipeline
+  - [incoming-listener](https://github.com/ManageIQ/aiops-incoming-listener)
+  - [data-collector](https://github.com/ManageIQ/aiops-data-collector)
+  - [publisher](https://github.com/ManageIQ/aiops-publisher)
+* Discover all AI services we're integrating with
+  - [dummy-ai](https://github.com/ManageIQ/aiops-dummy-ai-service)
+  - [aicoe-insights-clustering](https://github.com/RedHatInsights/aicoe-insights-clustering)
+* See deployment templates in the [e2e-deploy](https://github.com/RedHatInsights/e2e-deploy) repository
 
-If you would like to deploy the clustering service locally, you can build the container using [S2I](https://github.com/openshift/source-to-image)
+## Configure
 
-```
-❯ s2i build -c . centos/python-36-centos7 aiops-data-collector
-```
+* `AWS_ACCESS_KEY_ID` - AWS S3 credentials
+* `AWS_SECRET_ACCESS_KEY` - AWS S3 credentials
+* `AWS_S3_BUCKET_NAME` - AWS S3 bucket selector
+* `NEXT_MICROSERVICE_HOST` - where to pass the collected data (`hostname:port`)
 
-For convenience you can store your desired environment variables in a separate file
+## License
 
-```
-❯ cat << EOT >> env.list
-AI_MICROSERVICE_URL=<AI_SERVICE_HTTP_ENDPOINT>
-EOT
-```
-
-And then run it as a Docker container
-
-```
-❯ docker run --env-file env.list -it aiops-data-collector
-```
-
-## Push to OpenShift repository
-
-Some use cases requires the image to be built locally and then just simply deployed as is. Docker and OpenShift can facilitate this process:
-
-```
-❯ docker build -t <CLUSTER_REGISTRY>/<PROJECT>/aiops-data-collector:latest .
-❯ docker login -u <USERNAME> -p $(oc whoami -t) https://<CLUSTER_REGISTRY>
-❯ docker push <CLUSTER_REGISTRY>/<PROJECT>/aiops-data-collector:latest
-```
-
-- `<CLUSTER_REGISTRY>` is an domain name (e.g. `registry.insights-dev.openshift.com`)
-- `<PROJECT>` means the OpenShift project
-- `<USERNAME>` means OpenShift login
-
-# Related projects
-
-- [AI service](https://github.com/RedHatInsights/aicoe-insights-clustering)
+See [LICENSE](LICENSE)
