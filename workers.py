@@ -1,46 +1,99 @@
+from contextlib import suppress
 import logging
+import os
 from threading import Thread, current_thread
-from json import dumps
+from tempfile import NamedTemporaryFile
 
 import requests
 
 logger = logging.getLogger()
-HEADERS = {'Content-type': 'application/json'}
 
 
-def download_and_pass_data_thread(uri, next_service):
+try:
+    # Try to import a provided parser. This can be AI service specific.
+    from parser import parse
+except ImportError:
+    logger.warning('No parser provided, fallback used!')
+
+    def parse(_):
+        """Fallback parser.
+
+        Used when no data preprocessor is provided.
+        """
+        return {}
+
+logger = logging.getLogger()
+CHUNK = 10240
+MAX_RETRIES = 3
+
+
+def download_job(source_url: str, source_id: str, destination_url: str) -> None:
     """Spawn a thread worker for data downloading task.
 
     Requests the data to be downloaded and pass it to the next service
+    :param source: Data source location
+    :param endpoint: Next service endpoint which expect the data
     """
-    def worker():
+    def worker() -> None:
+        """Download, extract data and forward the content."""
         thread = current_thread()
-        logger.info('%s: Worker started', thread.name)
+        logger.debug('%s: Worker started', thread.name)
+
+        # Fetch data
         try:
-            # Fetch data
-            logger.info(
-                '%s: Downloaded records %s',
-                thread.name,
-                None
-            )
+            resp = requests.get(source_url, stream=True)
 
-            # Build the POST data object
-            data = {
-                'data': {},
-                # Set data identifier (for now, should be handled better)
-                'id': uri.split('/')[0]
-            }
+            with NamedTemporaryFile(delete=False) as tmp_file:
+                file_name = tmp_file.name
 
-            # Pass to next service
-            requests.post(
-                f'http://{next_service}',
-                data=dumps(data),
-                headers=HEADERS
-            )
-        except FileNotFoundError as exception:
-            logger.warning('%s: %s', thread.name, exception)
+                for chunk in filter(None, resp.iter_content(chunk_size=CHUNK)):
+                    tmp_file.write(chunk)
+
         except requests.HTTPError as exception:
-            logger.error('Unable to pass data: %s', exception)
+            logger.error(
+                '%s: Unable to fetch source data for "%s": %s',
+                thread.name, source_id, exception
+            )
+            return
+        except IOError as exception:
+            logger.error(
+                '%s: Unable to create temp file for "%s": %s',
+                thread.name, source_id, exception
+            )
+            return
+
+        # Unpack data and stream it
+
+        # Build the POST data object
+        data = {
+            'id': source_id,
+            'data': parse(file_name),
+        }
+
+        # Pass to next service
+        with requests.Session() as session:
+            for attempt in range(MAX_RETRIES):
+                try:
+                    resp = session.post(f'http://{destination_url}', json=data)
+
+                    resp.raise_for_status()
+                except requests.HTTPError as exception:
+                    logging.warning(
+                        '%s: Request failed (attempt #%d), retrying: %s',
+                        thread.name, attempt, str(e)
+                    )
+                    continue
+                else:
+                    break
+
+                logger.error(
+                    '%s: All attempts failed for "%s": %s',
+                    thread.name, source_id, exception
+                )
+
+        with suppress(IOError):
+            os.remove(file_name)
+
         logger.debug('%s: Done, exiting', thread.name)
 
     thread = Thread(target=worker)

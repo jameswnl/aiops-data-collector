@@ -29,15 +29,11 @@ def index():
     next_service = APP.config['NEXT_MICROSERVICE_HOST']
 
     try:
-        APP.logger.info('Peeking files on uri %s', input_data['url'])
+        workers.download_job(input_data['url'], next_service)
+        APP.logger.info('Job started.')
 
-        workers.download_and_pass_data_thread(
-            input_data['url'], next_service
-        )
-        APP.logger.info('Files found, job started.')
-
-    except FileNotFoundError as exception:
-        APP.logger.warning(exception)
+    except KeyError as exception:
+        APP.logger.warning('No url provided, request denied')
         return jsonify(status="FAILED", exception=str(exception)), 400
 
     return jsonify(status="OK", message="Job initiated")
