@@ -4,6 +4,7 @@ import os
 from flask import Flask, jsonify, request
 from flask.logging import default_handler
 
+
 import workers
 
 
@@ -27,9 +28,10 @@ def index():
     """Endpoint servicing data collection."""
     input_data = request.get_json(force=True)
     next_service = APP.config['NEXT_MICROSERVICE_HOST']
+    source_id = input_data.get('payload_id')
 
     try:
-        workers.download_job(input_data['url'], next_service)
+        workers.download_job(input_data['url'], source_id, next_service)
         APP.logger.info('Job started.')
 
     except KeyError as exception:

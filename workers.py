@@ -3,6 +3,7 @@ import logging
 import os
 from threading import Thread, current_thread
 from tempfile import NamedTemporaryFile
+from uuid import uuid4
 
 import requests
 
@@ -27,13 +28,17 @@ CHUNK = 10240
 MAX_RETRIES = 3
 
 
-def download_job(source_url: str, source_id: str, destination_url: str) -> None:
+def download_job(source_url: str, source_id: str, dest_url: str) -> None:
     """Spawn a thread worker for data downloading task.
 
     Requests the data to be downloaded and pass it to the next service
-    :param source: Data source location
-    :param endpoint: Next service endpoint which expect the data
+    :param source_url: Data source location
+    :param source_id: Data identifier
+    :param dest_url: Location where the collected data should be received
     """
+    # When source_id is missing, create our own
+    source_id = source_id or str(uuid4())
+
     def worker() -> None:
         """Download, extract data and forward the content."""
         thread = current_thread()
@@ -74,10 +79,10 @@ def download_job(source_url: str, source_id: str, destination_url: str) -> None:
         with requests.Session() as session:
             for attempt in range(MAX_RETRIES):
                 try:
-                    resp = session.post(f'http://{destination_url}', json=data)
+                    resp = session.post(f'http://{dest_url}', json=data)
 
                     resp.raise_for_status()
-                except requests.HTTPError as exception:
+                except requests.HTTPError as e:
                     logging.warning(
                         '%s: Request failed (attempt #%d), retrying: %s',
                         thread.name, attempt, str(e)
@@ -87,8 +92,7 @@ def download_job(source_url: str, source_id: str, destination_url: str) -> None:
                     break
 
                 logger.error(
-                    '%s: All attempts failed for "%s": %s',
-                    thread.name, source_id, exception
+                    '%s: All attempts failed for "%s"', thread.name, source_id
                 )
 
         with suppress(IOError):
