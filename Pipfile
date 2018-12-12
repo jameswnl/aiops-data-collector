@@ -7,11 +7,6 @@ name = "pypi"
 flask = "*"
 gunicorn = "*"
 requests = ">=2.20.0"
-fastparquet = "*"
-python-snappy = "*"
-pandas = "*"
-"s3fs" = "*"
-numpy = "*"
 
 [dev-packages]
 pytest = "*"
