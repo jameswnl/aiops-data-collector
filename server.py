@@ -66,6 +66,12 @@ def post_collect():
     return jsonify(status="OK", message="Job initiated")
 
 
+@APP.route("/metrics", methods=['GET'])
+def metrics():
+    """Metrics Endpoint."""
+    return prometheus_metrics.generate_latest()
+
+
 if __name__ == "__main__":
     # pylama:ignore=C0103
     port = int(os.environ.get("PORT", 8004))
