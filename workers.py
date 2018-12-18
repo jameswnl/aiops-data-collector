@@ -9,7 +9,6 @@ import requests
 
 logger = logging.getLogger()
 
-
 try:
     # Try to import a provided parser. This can be AI service specific.
     from parser import parse
@@ -23,9 +22,38 @@ except ImportError:
         """
         return {}
 
-logger = logging.getLogger()
 CHUNK = 10240
 MAX_RETRIES = 3
+
+
+def _retryable(method: str, *args, **kwargs) -> requests.Response:
+    """Retryable HTTP request.
+
+    Invoke a "method" on "requests.session" with retry logic.
+    :param method: "get", "post" etc.
+    :param *args: Args for requests (first should be an URL, etc.)
+    :param **kwargs: Kwargs for requests
+    :return: Response object
+    :raises: HTTPError when all requests fail
+    """
+    thread = current_thread()
+
+    with requests.Session() as session:
+        for attempt in range(MAX_RETRIES):
+            try:
+                resp = getattr(session, method)(*args, **kwargs)
+
+                resp.raise_for_status()
+            except (requests.HTTPError, requests.ConnectionError) as e:
+                logger.warning(
+                    '%s: Request failed (attempt #%d), retrying: %s',
+                    thread.name, attempt, str(e)
+                )
+                continue
+            else:
+                return resp
+
+    raise requests.HTTPError('All attempts failed')
 
 
 def download_job(source_url: str, source_id: str, dest_url: str) -> None:
@@ -46,20 +74,21 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
 
         # Fetch data
         try:
-            resp = requests.get(source_url, stream=True)
-
-            with NamedTemporaryFile(delete=False) as tmp_file:
-                file_name = tmp_file.name
-
-                for chunk in filter(None, resp.iter_content(chunk_size=CHUNK)):
-                    tmp_file.write(chunk)
-
+            resp = _retryable('get', source_url, stream=True)
         except requests.HTTPError as exception:
             logger.error(
                 '%s: Unable to fetch source data for "%s": %s',
                 thread.name, source_id, exception
             )
             return
+
+        try:
+            with NamedTemporaryFile(delete=False) as tmp_file:
+                file_name = tmp_file.name
+
+                for chunk in filter(None, resp.iter_content(chunk_size=CHUNK)):
+                    tmp_file.write(chunk)
+
         except IOError as exception:
             logger.error(
                 '%s: Unable to create temp file for "%s": %s',
@@ -76,25 +105,15 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
         }
 
         # Pass to next service
-        with requests.Session() as session:
-            for attempt in range(MAX_RETRIES):
-                try:
-                    resp = session.post(f'http://{dest_url}', json=data)
+        try:
+            resp = _retryable('post', f'http://{dest_url}', json=data)
+        except requests.HTTPError as exception:
+            logger.error(
+                '%s: Failed to pass data for "%s": %s',
+                thread.name, source_id, exception
+            )
 
-                    resp.raise_for_status()
-                except requests.HTTPError as e:
-                    logging.warning(
-                        '%s: Request failed (attempt #%d), retrying: %s',
-                        thread.name, attempt, str(e)
-                    )
-                    continue
-                else:
-                    break
-
-                logger.error(
-                    '%s: All attempts failed for "%s"', thread.name, source_id
-                )
-
+        # Cleanup
         with suppress(IOError):
             os.remove(file_name)
 
