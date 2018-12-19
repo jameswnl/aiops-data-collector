@@ -1,49 +1,122 @@
+from contextlib import suppress
 import logging
+import os
 from threading import Thread, current_thread
-from json import dumps
+from tempfile import NamedTemporaryFile
+from uuid import uuid4
 
 import requests
 
-import s3
-
 logger = logging.getLogger()
-HEADERS = {'Content-type': 'application/json'}
+
+try:
+    # Try to import a provided parser. This can be AI service specific.
+    from parser import parse
+except ImportError:
+    logger.warning('No parser provided, fallback used!')
+
+    def parse(_):
+        """Fallback parser.
+
+        Used when no data preprocessor is provided.
+        """
+        return {}
+
+CHUNK = 10240
+MAX_RETRIES = 3
 
 
-def download_and_pass_data_thread(filesystem, bucket, uri, next_service):
+def _retryable(method: str, *args, **kwargs) -> requests.Response:
+    """Retryable HTTP request.
+
+    Invoke a "method" on "requests.session" with retry logic.
+    :param method: "get", "post" etc.
+    :param *args: Args for requests (first should be an URL, etc.)
+    :param **kwargs: Kwargs for requests
+    :return: Response object
+    :raises: HTTPError when all requests fail
+    """
+    thread = current_thread()
+
+    with requests.Session() as session:
+        for attempt in range(MAX_RETRIES):
+            try:
+                resp = getattr(session, method)(*args, **kwargs)
+
+                resp.raise_for_status()
+            except (requests.HTTPError, requests.ConnectionError) as e:
+                logger.warning(
+                    '%s: Request failed (attempt #%d), retrying: %s',
+                    thread.name, attempt, str(e)
+                )
+                continue
+            else:
+                return resp
+
+    raise requests.HTTPError('All attempts failed')
+
+
+def download_job(source_url: str, source_id: str, dest_url: str) -> None:
     """Spawn a thread worker for data downloading task.
 
     Requests the data to be downloaded and pass it to the next service
+    :param source_url: Data source location
+    :param source_id: Data identifier
+    :param dest_url: Location where the collected data should be received
     """
-    def worker():
+    # When source_id is missing, create our own
+    source_id = source_id or str(uuid4())
+
+    def worker() -> None:
+        """Download, extract data and forward the content."""
         thread = current_thread()
-        logger.info('%s: Worker started', thread.name)
+        logger.debug('%s: Worker started', thread.name)
+
+        # Fetch data
         try:
-            # Fetch data
-            s3_data = s3.fetch(filesystem, bucket, uri)
-            logger.info(
-                '%s: Downloaded records %s',
-                thread.name,
-                s3_data.shape
-            )
-
-            # Build the POST data object
-            data = {
-                'data': s3_data.to_dict(),
-                # Set data identifier (for now, should be handled better)
-                'id': uri.split('/')[0]
-            }
-
-            # Pass to next service
-            requests.post(
-                f'http://{next_service}',
-                data=dumps(data),
-                headers=HEADERS
-            )
-        except FileNotFoundError as exception:
-            logger.warning('%s: %s', thread.name, exception)
+            resp = _retryable('get', source_url, stream=True)
         except requests.HTTPError as exception:
-            logger.error('Unable to pass data: %s', exception)
+            logger.error(
+                '%s: Unable to fetch source data for "%s": %s',
+                thread.name, source_id, exception
+            )
+            return
+
+        try:
+            with NamedTemporaryFile(delete=False) as tmp_file:
+                file_name = tmp_file.name
+
+                for chunk in filter(None, resp.iter_content(chunk_size=CHUNK)):
+                    tmp_file.write(chunk)
+
+        except IOError as exception:
+            logger.error(
+                '%s: Unable to create temp file for "%s": %s',
+                thread.name, source_id, exception
+            )
+            return
+
+        # Unpack data and stream it
+
+        # Build the POST data object
+        data = {
+            'id': source_id,
+            'data': parse(file_name),
+        }
+
+        # Pass to next service
+        try:
+            resp = _retryable('post', f'http://{dest_url}', json=data)
+        except requests.HTTPError as exception:
+            logger.error(
+                '%s: Failed to pass data for "%s": %s',
+                thread.name, source_id, exception
+            )
+
+        # Cleanup
+        with suppress(IOError):
+            os.remove(file_name)
+
         logger.debug('%s: Done, exiting', thread.name)
 
     thread = Thread(target=worker)
