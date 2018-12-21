@@ -6,33 +6,13 @@ from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 import requests
-from monitoring import prometheus_metrics as mnm
+import prometheus_metrics
 
 import custom_parser
 
 logger = logging.getLogger()
 CHUNK = 10240
 MAX_RETRIES = 3
-
-
-def add_metrics(method: str, result: bool):
-    """Add Prometheus Counter Metrics for Request types GET and POST.
-
-    :param method: "get", "post" etc.
-    :param result: True/False based on the Request response
-    """
-    if method == 'get' and result is True:
-        mnm.aiops_data_collector_data_download_requests_total.inc()
-        mnm.aiops_data_collector_data_download_successful_requests_total.inc()
-    elif method == 'get' and result is False:
-        mnm.aiops_data_collector_data_download_requests_total.inc()
-        mnm.aiops_data_collector_data_download_request_exceptions.inc()
-    elif method == 'post' and result is True:
-        mnm.aiops_data_collector_post_data_requests_total.inc()
-        mnm.aiops_data_collector_post_data_successful_requests_total.inc()
-    elif method == 'post' and result is False:
-        mnm.aiops_data_collector_post_data_requests_total.inc()
-        mnm.aiops_data_collector_post_data_request_exceptions.inc()
 
 
 def _retryable(method: str, *args, **kwargs) -> requests.Response:
@@ -58,10 +38,8 @@ def _retryable(method: str, *args, **kwargs) -> requests.Response:
                     '%s: Request failed (attempt #%d), retrying: %s',
                     thread.name, attempt, str(e)
                 )
-                add_metrics(method, False)
                 continue
             else:
-                add_metrics(method, True)
                 return resp
 
     raise requests.HTTPError('All attempts failed')
@@ -84,6 +62,7 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
         logger.debug('%s: Worker started', thread.name)
 
         # Fetch data
+        prometheus_metrics.METRICS['gets'].inc()
         try:
             resp = _retryable('get', source_url, stream=True)
         except requests.HTTPError as exception:
@@ -91,7 +70,10 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
                 '%s: Unable to fetch source data for "%s": %s',
                 thread.name, source_id, exception
             )
+            prometheus_metrics.METRICS['get_errors'].inc()
             return
+
+        prometheus_metrics.METRICS['get_successes'].inc()
 
         try:
             with NamedTemporaryFile(delete=False) as tmp_file:
@@ -116,6 +98,7 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
         }
 
         # Pass to next service
+        prometheus_metrics.METRICS['posts'].inc()
         try:
             resp = _retryable('post', f'http://{dest_url}', json=data)
             prometheus_metrics.METRICS['post_successes'].inc()
@@ -124,6 +107,7 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
                 '%s: Failed to pass data for "%s": %s',
                 thread.name, source_id, exception
             )
+            prometheus_metrics.METRICS['post_errors'].inc()
 
         # Cleanup
         with suppress(IOError):
