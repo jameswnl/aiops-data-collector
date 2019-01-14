@@ -7,6 +7,7 @@ name = "pypi"
 flask = "*"
 gunicorn = "*"
 requests = ">=2.20.0"
+pandas = "*"
 
 [dev-packages]
 pytest = "*"

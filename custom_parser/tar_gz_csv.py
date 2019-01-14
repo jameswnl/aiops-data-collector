@@ -1,7 +1,6 @@
-import csv
 import tarfile
 from itertools import chain
-from io import StringIO
+import pandas as pd
 
 
 def csv_parser(filename):
@@ -19,8 +18,7 @@ def csv_parser(filename):
                 continue
 
             # Read the CSV
-            csv_string = tar.extractfile(member).read().decode()
-            csv_stream = StringIO(csv_string)
-            entries = chain(entries, csv.DictReader(csv_stream))
+            csv_data = pd.read_csv(tar.extractfile(member))
+            entries = chain(entries, csv_data.to_dict('records'))
 
     return list(entries)
