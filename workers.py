@@ -7,21 +7,9 @@ from uuid import uuid4
 
 import requests
 
+import custom_parser
+
 logger = logging.getLogger()
-
-try:
-    # Try to import a provided parser. This can be AI service specific.
-    from parser import parse
-except ImportError:
-    logger.warning('No parser provided, fallback used!')
-
-    def parse(_):
-        """Fallback parser.
-
-        Used when no data preprocessor is provided.
-        """
-        return {}
-
 CHUNK = 10240
 MAX_RETRIES = 3
 
@@ -101,7 +89,7 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
         # Build the POST data object
         data = {
             'id': source_id,
-            'data': parse(file_name),
+            'data': custom_parser.parse(file_name),
         }
 
         # Pass to next service

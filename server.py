@@ -4,7 +4,6 @@ import os
 from flask import Flask, jsonify, request
 from flask.logging import default_handler
 
-
 import workers
 
 
@@ -42,4 +41,6 @@ def index():
 
 
 if __name__ == "__main__":
-    APP.run()
+    # pylama:ignore=C0103
+    port = int(os.environ.get("PORT", 8004))
+    APP.run(port=port)
