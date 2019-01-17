@@ -1,9 +1,10 @@
 import tarfile
+from io import BytesIO
 from itertools import chain
 import pandas as pd
 
 
-def csv_parser(filename):
+def csv_parser(file_obj: BytesIO) -> list:
     """Extract CSV data from TAR.GZ file.
 
     Extracts all CSV files from a TAR.GZ archive and combines them into a list
@@ -11,7 +12,7 @@ def csv_parser(filename):
     :param filename: Name of the filename to parse
     """
     entries = list()
-    with tarfile.open(filename) as tar:
+    with tarfile.open(fileobj=file_obj) as tar:
         for member in tar:
             # Only CSV files are interesting
             if not member.name.endswith('.csv'):

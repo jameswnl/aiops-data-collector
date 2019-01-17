@@ -1,8 +1,6 @@
-from contextlib import suppress
 import logging
-import os
+from io import BytesIO
 from threading import Thread, current_thread
-from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 import requests
@@ -79,29 +77,16 @@ def download_job(
             )
             prometheus_metrics.METRICS['get_errors'].inc()
             return
-
         prometheus_metrics.METRICS['get_successes'].inc()
 
-        try:
-            with NamedTemporaryFile(delete=False) as tmp_file:
-                file_name = tmp_file.name
-
-                for chunk in filter(None, resp.iter_content(chunk_size=CHUNK)):
-                    tmp_file.write(chunk)
-
-        except IOError as exception:
-            logger.error(
-                '%s: Unable to create temp file for "%s": %s',
-                thread.name, source_id, exception
-            )
-            return
+        file_obj = BytesIO(resp.content)
 
         # Unpack data and stream it
 
         # Build the POST data object
         data = {
             'id': source_id,
-            'data': custom_parser.parse(file_name),
+            'data': custom_parser.parse(file_obj),
         }
 
         # Pass to next service
@@ -120,10 +105,6 @@ def download_job(
                 thread.name, source_id, exception
             )
             prometheus_metrics.METRICS['post_errors'].inc()
-
-        # Cleanup
-        with suppress(IOError):
-            os.remove(file_name)
 
         logger.debug('%s: Done, exiting', thread.name)
 
