@@ -1,8 +1,12 @@
-import json
 import tarfile
 from io import BytesIO
 
-import pandas as pd
+BUFFER_SIZE = 10240
+
+
+def _only_csv_file(member: tarfile.TarInfo) -> bool:
+    """Selector for CSV files only in a TAR file."""
+    return member.name.endswith('.csv')
 
 
 def csv_parser(file_obj: BytesIO) -> bytes:
@@ -12,21 +16,14 @@ def csv_parser(file_obj: BytesIO) -> bytes:
     of dictionary objects.
     :param filename: Name of the filename to parse
     """
-    # Start data stream
-    yield b'['
-
     with tarfile.open(fileobj=file_obj) as tar:
-        for member in tar:
-            # Only CSV files are interesting
-            if not member.name.endswith('.csv'):
-                continue
+        # Read just the first CSV available
+        member = next(filter(_only_csv_file, tar.members), None)
+        # Return if no CSV file was found
+        if not member:
+            return
 
-            # Read the CSV
-            csv_data = pd.read_csv(tar.extractfile(member))
-
-            for item in csv_data.itertuples(index=False):
-                out_str = json.dumps(item._asdict())
-                yield f'{out_str},'.encode()
-
-    # End data stream
-    yield b']'
+        # Extract CSV file object
+        csv_data = tar.extractfile(member)
+        # Read the CSV content in chunks
+        yield from iter(lambda: csv_data.read(BUFFER_SIZE), b'')

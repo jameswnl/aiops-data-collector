@@ -44,13 +44,6 @@ def _retryable(method: str, *args, **kwargs) -> requests.Response:
     raise requests.HTTPError('All attempts failed')
 
 
-def _output_gen(source_id, file_obj):
-    yield f'{{"id":{source_id},"data":'.encode()
-    for chunk in custom_parser.parse(file_obj):
-        yield chunk
-    yield b'}'
-
-
 def download_job(
         source_url: str,
         source_id: str,
@@ -88,7 +81,11 @@ def download_job(
 
         file_obj = BytesIO(resp.content)
 
-        # Unpack data and stream it
+        # Store payload ID in a header
+        headers = {
+            'source_id': source_id,
+            'x-rh-identity': b64_identity,
+        }
 
         # Pass to next service
         prometheus_metrics.METRICS['posts'].inc()
@@ -96,8 +93,8 @@ def download_job(
             resp = _retryable(
                 'post',
                 f'http://{dest_url}',
-                data=_output_gen(source_id, file_obj),
-                headers={"x-rh-identity": b64_identity}
+                data=custom_parser.parse(file_obj),
+                headers=headers
             )
             prometheus_metrics.METRICS['post_successes'].inc()
         except requests.HTTPError as exception:
@@ -157,7 +154,6 @@ def download_job(
                 thread.name, source_id, exception
             )
             prometheus_metrics.METRICS['post_errors'].inc()
-        prometheus_metrics.METRICS['post_successes'].inc()
 
         logger.debug('%s: Done, exiting', thread.name)
 
