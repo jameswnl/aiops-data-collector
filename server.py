@@ -67,7 +67,7 @@ def post_collect():
 
 
 @APP.route("/metrics", methods=['GET'])
-def metrics():
+def get_metrics():
     """Metrics Endpoint."""
     return prometheus_metrics.generate_aggregated_metrics()
 
