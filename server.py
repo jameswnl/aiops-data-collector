@@ -5,6 +5,7 @@ from flask import Flask, jsonify, request
 from flask.logging import default_handler
 
 import workers
+import prometheus_metrics
 
 from collect_json_schema import CollectJSONSchema
 
@@ -44,7 +45,11 @@ def post_collect():
     """Endpoint servicing data collection."""
     input_data = request.get_json(force=True)
     validation = SCHEMA.load(input_data)
+
+    prometheus_metrics.METRICS['jobs_total'].inc()
+
     if validation.errors:
+        prometheus_metrics.METRICS['jobs_denied'].inc()
         return jsonify(
             status='Error',
             errors=validation.errors,
@@ -57,7 +62,14 @@ def post_collect():
     workers.download_job(input_data['url'], source_id, next_service)
     APP.logger.info('Job started.')
 
+    prometheus_metrics.METRICS['jobs_initiated'].inc()
     return jsonify(status="OK", message="Job initiated")
+
+
+@APP.route("/metrics", methods=['GET'])
+def get_metrics():
+    """Metrics Endpoint."""
+    return prometheus_metrics.generate_aggregated_metrics()
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
 import requests
+import prometheus_metrics
 
 import custom_parser
 
@@ -61,6 +62,7 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
         logger.debug('%s: Worker started', thread.name)
 
         # Fetch data
+        prometheus_metrics.METRICS['gets'].inc()
         try:
             resp = _retryable('get', source_url, stream=True)
         except requests.HTTPError as exception:
@@ -68,7 +70,10 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
                 '%s: Unable to fetch source data for "%s": %s',
                 thread.name, source_id, exception
             )
+            prometheus_metrics.METRICS['get_errors'].inc()
             return
+
+        prometheus_metrics.METRICS['get_successes'].inc()
 
         try:
             with NamedTemporaryFile(delete=False) as tmp_file:
@@ -93,13 +98,16 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
         }
 
         # Pass to next service
+        prometheus_metrics.METRICS['posts'].inc()
         try:
             resp = _retryable('post', f'http://{dest_url}', json=data)
+            prometheus_metrics.METRICS['post_successes'].inc()
         except requests.HTTPError as exception:
             logger.error(
                 '%s: Failed to pass data for "%s": %s',
                 thread.name, source_id, exception
             )
+            prometheus_metrics.METRICS['post_errors'].inc()
 
         # Cleanup
         with suppress(IOError):
