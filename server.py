@@ -26,11 +26,23 @@ ROOT_LOGGER.addHandler(default_handler)
 
 VERSION = "0.0.1"
 
+ROUTE_PREFIX = "/r/insights/platform/aiops-data-collector"
+
 # Schema for the Collect API
 SCHEMA = CollectJSONSchema()
 
 
-@APP.route("/api/v0/version", methods=['GET'])
+@APP.route(ROUTE_PREFIX, methods=['GET'])
+def get_root():
+    """Root Endpoint for 3scale."""
+    return jsonify(
+        status='OK',
+        version=VERSION,
+        message='Up and Running'
+    )
+
+
+@APP.route(f'{ROUTE_PREFIX}/api/v0/version', methods=['GET'])
 def get_version():
     """Endpoint for getting the current version."""
     return jsonify(
@@ -40,7 +52,7 @@ def get_version():
     )
 
 
-@APP.route("/api/v0/collect", methods=['POST'])
+@APP.route(f'{ROUTE_PREFIX}/api/v0/collect', methods=['POST'])
 def post_collect():
     """Endpoint servicing data collection."""
     input_data = request.get_json(force=True)
