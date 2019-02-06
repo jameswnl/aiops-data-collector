@@ -9,6 +9,7 @@ import requests
 import prometheus_metrics
 
 import custom_parser
+import target_worker
 
 logger = logging.getLogger()
 CHUNK = 10240
@@ -69,7 +70,7 @@ def download_job(
     # When source_id is missing, create our own
     source_id = source_id or str(uuid4())
 
-    def worker_clustering() -> None:
+    def worker_clustering(clustering_auth: dict) -> None:
         """Download, extract data and forward the content."""
         thread = current_thread()
         logger.debug('%s: Worker started', thread.name)
@@ -185,6 +186,15 @@ def download_job(
             prometheus_metrics.METRICS['post_errors'].inc()
 
         logger.debug('%s: Done, exiting', thread.name)
+
+    thread_mappings = {
+        'worker_clustering': worker_clustering,
+        'worker_topology': worker_topology
+    }
+
+    name, auth = target_worker.name()
+
+    worker = thread_mappings[name](auth)
 
     thread = Thread(target=worker)
     thread.start()
