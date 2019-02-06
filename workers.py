@@ -45,13 +45,19 @@ def _retryable(method: str, *args, **kwargs) -> requests.Response:
     raise requests.HTTPError('All attempts failed')
 
 
-def download_job(source_url: str, source_id: str, dest_url: str) -> None:
+def download_job(
+        source_url: str,
+        source_id: str,
+        dest_url: str,
+        b64_identity: str = None
+) -> None:
     """Spawn a thread worker for data downloading task.
 
     Requests the data to be downloaded and pass it to the next service
     :param source_url: Data source location
     :param source_id: Data identifier
     :param dest_url: Location where the collected data should be received
+    :param b64_identity: Redhat Identity base64 string
     """
     # When source_id is missing, create our own
     source_id = source_id or str(uuid4())
@@ -100,7 +106,12 @@ def download_job(source_url: str, source_id: str, dest_url: str) -> None:
         # Pass to next service
         prometheus_metrics.METRICS['posts'].inc()
         try:
-            resp = _retryable('post', f'http://{dest_url}', json=data)
+            resp = _retryable(
+                'post',
+                f'http://{dest_url}',
+                json=data,
+                headers={"x-rh-identity": b64_identity}
+            )
             prometheus_metrics.METRICS['post_successes'].inc()
         except requests.HTTPError as exception:
             logger.error(

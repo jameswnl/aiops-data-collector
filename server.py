@@ -57,7 +57,6 @@ def post_collect():
     """Endpoint servicing data collection."""
     input_data = request.get_json(force=True)
     validation = SCHEMA.load(input_data)
-
     prometheus_metrics.METRICS['jobs_total'].inc()
 
     if validation.errors:
@@ -71,7 +70,14 @@ def post_collect():
     next_service = APP.config['NEXT_MICROSERVICE_HOST']
     source_id = input_data.get('payload_id')
 
-    workers.download_job(input_data['url'], source_id, next_service)
+    b64_identity = request.headers.get('x-rh-identity')
+
+    workers.download_job(
+        input_data['url'],
+        source_id,
+        next_service,
+        b64_identity
+    )
     APP.logger.info('Job started.')
 
     prometheus_metrics.METRICS['jobs_initiated'].inc()
