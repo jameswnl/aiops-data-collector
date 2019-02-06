@@ -15,13 +15,6 @@ logger = logging.getLogger()
 CHUNK = 10240
 MAX_RETRIES = 3
 
-ENTITIES = [
-    "container_nodes",
-    "volume_attachments",
-    "volumes",
-    "volume_types"
-]
-
 
 def _retryable(method: str, *args, **kwargs) -> requests.Response:
     """Retryable HTTP request.
@@ -70,7 +63,7 @@ def download_job(
     # When source_id is missing, create our own
     source_id = source_id or str(uuid4())
 
-    def worker_clustering(clustering_auth: dict) -> None:
+    def worker_clustering(_clustering_info: dict) -> None:
         """Download, extract data and forward the content."""
         thread = current_thread()
         logger.debug('%s: Worker started', thread.name)
@@ -134,16 +127,10 @@ def download_job(
 
         logger.debug('%s: Done, exiting', thread.name)
 
-    def worker_topology(topology_auth: dict) -> None:
+    def worker_topology(topology_info: dict) -> None:
         """Download and forward the content."""
         thread = current_thread()
         logger.debug('%s: Worker started', thread.name)
-
-        if None in topology_auth.values():
-            logger.error('Environment not set properly, '
-                         'missing USERNAME or PASSWORD or '
-                         'TOPOLOGY_INVENTORY_ENDPOINT')
-            return
 
         # Build the POST data object
         data = {
@@ -151,16 +138,19 @@ def download_job(
             'data': {}
         }
 
-        for entity in ENTITIES:
+        endpoint = topology_info['authentication']['endpoint']
+        username = topology_info["authentication"]['username']
+        password = topology_info["authentication"]['password']
+
+        for entity in topology_info['queries'].keys():
             prometheus_metrics.METRICS['gets'].inc()
+
+            query_string = topology_info['queries'][entity]
             try:
                 resp = _retryable(
                     'get',
-                    f'{topology_auth["endpoint"]}/{entity}',
-                    auth=(
-                        topology_auth['username'],
-                        topology_auth['password']
-                    ),
+                    f'{endpoint}/{entity}{query_string}',
+                    auth=(username, password),
                     verify=False
                 )
                 data['data'][entity] = resp.json()
@@ -192,9 +182,10 @@ def download_job(
         'worker_topology': worker_topology
     }
 
-    name, auth = target_worker.name()
+    name = target_worker.NAME
+    info = target_worker.INFO
 
-    worker = thread_mappings[name](auth)
+    worker = thread_mappings[name](info)
 
     thread = Thread(target=worker)
     thread.start()

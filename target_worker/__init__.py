@@ -1,22 +1,50 @@
 """Target Worker library.
 
 With the help of this library a target worker can be assigned on-the-fly
-The library also provides authentication information to process the GET
-requests, if applicable
+The library also provides all necessary information to the worker to process
+the GET requests
 """
 
 import logging
 import os
+import sys
 
 logger = logging.getLogger()
 
 if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
     logger.info('Target Worker is Topology')
-    from .target_worker import topology as name
+
+    USERNAME = os.environ.get('USERNAME')
+    PASSWORD = os.environ.get('PASSWORD')
+    ENDPOINT = os.environ.get('TOPOLOGY_INVENTORY_ENDPOINT')
+
+    if None in [USERNAME, PASSWORD, ENDPOINT]:
+        logger.error('Environment not set properly, '
+                     'missing USERNAME or PASSWORD or '
+                     'TOPOLOGY_INVENTORY_ENDPOINT')
+        sys.exit(1)
+
+    NAME = 'worker_topology'
+    INFO = {
+        'authentication': {
+            'username': USERNAME,
+            'password': PASSWORD,
+            'endpoint': ENDPOINT
+        },
+        'queries': {
+            'container_nodes': '?archived_at=',
+            'volume_attachments': '',
+            'volumes': '?archived_at=',
+            'volume_types': '?archived_at='
+        }
+    }
+
 
 else:
     logger.info('Target Worker is Clustering')
-    from .target_worker import clustering as name
+
+    NAME = 'worker_clustering'
+    INFO = {}
 
 
-__all__ = ['name']
+__all__ = ['NAME', 'INFO']
