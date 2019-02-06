@@ -185,7 +185,5 @@ def download_job(
     name = target_worker.NAME
     info = target_worker.INFO
 
-    worker = thread_mappings[name](info)
-
-    thread = Thread(target=worker)
+    thread = Thread(target=thread_mappings[name](info))
     thread.start()
