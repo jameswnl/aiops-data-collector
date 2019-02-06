@@ -14,6 +14,13 @@ logger = logging.getLogger()
 CHUNK = 10240
 MAX_RETRIES = 3
 
+ENTITIES = [
+    "container_nodes",
+    "volume_attachments",
+    "volumes",
+    "volume_types"
+]
+
 
 def _retryable(method: str, *args, **kwargs) -> requests.Response:
     """Retryable HTTP request.
@@ -123,6 +130,59 @@ def download_job(
         # Cleanup
         with suppress(IOError):
             os.remove(file_name)
+
+        logger.debug('%s: Done, exiting', thread.name)
+
+    def worker_topology(topology_auth: dict) -> None:
+        """Download and forward the content."""
+        thread = current_thread()
+        logger.debug('%s: Worker started', thread.name)
+
+        if None in topology_auth.values():
+            logger.error('Environment not set properly, '
+                         'missing USERNAME or PASSWORD or '
+                         'TOPOLOGY_INVENTORY_ENDPOINT')
+            return
+
+        # Build the POST data object
+        data = {
+            'id': source_id,
+            'data': {}
+        }
+
+        for entity in ENTITIES:
+            prometheus_metrics.METRICS['gets'].inc()
+            try:
+                resp = _retryable(
+                    'get',
+                    f'{topology_auth["endpoint"]}/{entity}',
+                    auth=(
+                        topology_auth['username'],
+                        topology_auth['password']
+                    ),
+                    verify=False
+                )
+                data['data'][entity] = resp.json()
+                prometheus_metrics.METRICS['get_successes'].inc()
+            except requests.HTTPError as exception:
+                prometheus_metrics.METRICS['get_errors'].inc()
+                logger.error(
+                    '%s: Unable to fetch source data for "%s": %s',
+                    thread.name, source_id, exception
+                )
+                return
+
+        # Pass to next service
+        prometheus_metrics.METRICS['posts'].inc()
+        try:
+            resp = _retryable('post', f'http://{dest_url}', json=data)
+            prometheus_metrics.METRICS['post_successes'].inc()
+        except requests.HTTPError as exception:
+            logger.error(
+                '%s: Failed to pass data for "%s": %s',
+                thread.name, source_id, exception
+            )
+            prometheus_metrics.METRICS['post_errors'].inc()
 
         logger.debug('%s: Done, exiting', thread.name)
 
