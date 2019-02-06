@@ -62,7 +62,7 @@ def download_job(
     # When source_id is missing, create our own
     source_id = source_id or str(uuid4())
 
-    def worker() -> None:
+    def worker_clustering() -> None:
         """Download, extract data and forward the content."""
         thread = current_thread()
         logger.debug('%s: Worker started', thread.name)
