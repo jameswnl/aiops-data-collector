@@ -49,7 +49,7 @@ def download_job(
         source_url: str,
         source_id: str,
         dest_url: str,
-        b64_identity: str
+        b64_identity: str = None
 ) -> None:
     """Spawn a thread worker for data downloading task.
 
@@ -57,7 +57,7 @@ def download_job(
     :param source_url: Data source location
     :param source_id: Data identifier
     :param dest_url: Location where the collected data should be received
-    :param b64_identity: Identity in the request header
+    :param b64_identity: Redhat Identity base64 string
     """
     # When source_id is missing, create our own
     source_id = source_id or str(uuid4())

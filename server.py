@@ -70,8 +70,7 @@ def post_collect():
     next_service = APP.config['NEXT_MICROSERVICE_HOST']
     source_id = input_data.get('payload_id')
 
-    b64_identity = request.headers['x-rh-identity'] \
-        if request.headers.get('x-rh-identity') else None
+    b64_identity = request.headers.get('x-rh-identity')
 
     workers.download_job(
         input_data['url'],
