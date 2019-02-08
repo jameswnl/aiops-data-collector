@@ -28,7 +28,9 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
             'container_nodes': 'archived_at',
             'volume_attachments': '',
             'volumes': 'archived_at',
-            'volume_types': 'archived_at'
+            'volume_types': '',
+            'vms': 'archived_at',
+            'sources': ''
         }
     }
 
