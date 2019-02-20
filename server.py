@@ -73,7 +73,7 @@ def post_collect():
     b64_identity = request.headers.get('x-rh-identity')
 
     workers.download_job(
-        input_data['url'],
+        input_data.get('url'),
         source_id,
         next_service,
         b64_identity
