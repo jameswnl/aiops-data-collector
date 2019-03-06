@@ -122,14 +122,38 @@ def download_job(
 
             query_string = topology_info['queries'][entity]
             try:
+                # First GET call to get data as well as pagination links
                 resp = _retryable(
                     'get',
-                    f'{topology_info["endpoint"]}/{entity}',
+                    f'{topology_info["host"]}{topology_info["endpoint"]}'
+                    f'/{entity}',
                     params={query_string: ''},
                     verify=False
                 )
-                data['data'][entity] = resp.json()
+                out = resp.json()
+                print("out = ")
+                print(out)
+                all_data = out['data']
                 prometheus_metrics.METRICS['get_successes'].inc()
+                try:
+                    # Subsequent GET calls that reference the pagination link
+                    while out['links'].get('next'):
+                        resp = _retryable(
+                            'get',
+                            f'{topology_info["host"]}{out["links"]["next"]}',
+                            verify=False
+                        )
+                        out = resp.json()
+                        all_data += out['data']
+                        data['data'][entity] = all_data
+                        prometheus_metrics.METRICS['get_successes'].inc()
+                except requests.HTTPError as exception:
+                    prometheus_metrics.METRICS['get_errors'].inc()
+                    logger.error(
+                        '%s: Unable to fetch source data for "%s": %s',
+                        thread.name, source_id, exception
+                    )
+                    return
             except requests.HTTPError as exception:
                 prometheus_metrics.METRICS['get_errors'].inc()
                 logger.error(

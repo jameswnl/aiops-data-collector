@@ -14,6 +14,7 @@ logger = logging.getLogger()
 if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
     logger.info('Target Worker is Topology')
 
+    HOST = os.environ.get('TOPOLOGY_INVENTORY_HOST')
     ENDPOINT = os.environ.get('TOPOLOGY_INVENTORY_ENDPOINT')
 
     if not ENDPOINT:
@@ -23,6 +24,7 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
 
     NAME = 'worker_topology'
     INFO = {
+        'host': HOST,
         'endpoint': ENDPOINT,
         'queries': {
             'container_nodes': 'archived_at',
