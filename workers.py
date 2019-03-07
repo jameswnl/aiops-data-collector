@@ -44,6 +44,52 @@ def _retryable(method: str, *args, **kwargs) -> requests.Response:
     raise requests.HTTPError('All attempts failed')
 
 
+def mutate_with_foreign_key(
+        mutable_page_data: list,
+        foreign_key: dict = None
+):
+    """Mutate Rows with Foreign key info.
+
+    Mutates all the rows in `mutable_page_data` with Foreign key data
+    :param mutable_page_data: Mutable Page data
+    :param foreign_key: Dictionary containing Foreign key details
+    """
+    if foreign_key:
+        for row in mutable_page_data:
+            row[foreign_key['name']] = foreign_key['id']
+
+
+def aggregated_pagination_data(
+        host: str,
+        most_recent_page_data: list,
+        foreign_key: dict = None
+):
+    """Aggregate data from ALL pages.
+
+    Returns data aggregated from ALL pages
+    :param host: The host
+    :param most_recent_page_data: Most recent page data
+    :param foreign_key: Dictionary containing Foreign key details
+    :raises: HTTPError in the function caller
+    """
+    pages_data = most_recent_page_data['data']  # First page data
+
+    while most_recent_page_data['links'].get('next'):
+        resp = _retryable(
+            'get',
+            f'{host}{most_recent_page_data["links"]["next"]}',
+            verify=False
+        )
+        most_recent_page_data = resp.json()
+
+        mutate_with_foreign_key(most_recent_page_data['data'], foreign_key)
+        pages_data += most_recent_page_data['data']
+
+        prometheus_metrics.METRICS['get_successes'].inc()
+
+    return pages_data
+
+
 def query_main_collection(
         host: str,
         endpoint: str,
@@ -60,6 +106,7 @@ def query_main_collection(
     :return: Response object with data retrieved from all pages
     :raises: HTTPError in the function caller
     """
+    all_data = []
     # First GET call to get data as well as pagination links
     resp = _retryable(
         'get',
@@ -68,19 +115,9 @@ def query_main_collection(
         verify=False
     )
     out = resp.json()
-    all_data = out['data']
     prometheus_metrics.METRICS['get_successes'].inc()
 
-    # Subsequent GET calls that reference the pagination link
-    while out['links'].get('next'):
-        resp = _retryable(
-            'get',
-            f'{host}{out["links"]["next"]}',
-            verify=False
-        )
-        out = resp.json()
-        all_data += out['data']
-        prometheus_metrics.METRICS['get_successes'].inc()
+    all_data += aggregated_pagination_data(host, out)
     return all_data
 
 
@@ -109,32 +146,25 @@ def query_sub_collection(
     all_data = []
     for item in collection:
         # First GET call to get data as well as pagination links
+        url = \
+            f'{host}{endpoint}/{main_collection}/{item["id"]}/{sub_collection}'
         resp = _retryable(
             'get',
-            f'{host}{endpoint}'
-            f'/{main_collection}/{item["id"]}/{sub_collection}',
+            url,
             params={query_string: ''},
             verify=False
         )
         out = resp.json()
-
-        for row in enumerate(out['data']):
-            row[1][foreign_key] = item['id']
-        all_data += out['data']
         prometheus_metrics.METRICS['get_successes'].inc()
 
-        # Subsequent GET calls that reference the pagination link
-        while out['links'].get('next'):
-            resp = _retryable(
-                'get',
-                f'{host}{out["links"]["next"]}',
-                verify=False
-            )
-            out = resp.json()
-            for row in enumerate(out['data']):
-                row[1][foreign_key] = item['id']
-            all_data += out['data']
-            prometheus_metrics.METRICS['get_successes'].inc()
+        foreign_key_details = {
+            'id': item['id'],
+            'name': foreign_key
+        }
+
+        mutate_with_foreign_key(out['data'], foreign_key_details)
+
+        all_data += aggregated_pagination_data(host, out, foreign_key_details)
     return all_data
 
 
