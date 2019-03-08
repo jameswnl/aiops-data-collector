@@ -44,6 +44,130 @@ def _retryable(method: str, *args, **kwargs) -> requests.Response:
     raise requests.HTTPError('All attempts failed')
 
 
+def mutate_with_foreign_key(
+        mutable_page_data: list,
+        foreign_key: dict = None
+):
+    """Mutate Rows with Foreign key info.
+
+    Mutates all the rows in `mutable_page_data` with Foreign key data
+    :param mutable_page_data: Mutable Page data
+    :param foreign_key: Dictionary containing Foreign key details
+    """
+    if foreign_key:
+        for row in mutable_page_data:
+            row[foreign_key['name']] = foreign_key['id']
+
+
+def aggregated_pagination_data(
+        host: str,
+        most_recent_page_data: list,
+        foreign_key: dict = None
+):
+    """Aggregate data from ALL pages.
+
+    Returns data aggregated from ALL pages
+    :param host: The host
+    :param most_recent_page_data: Most recent page data
+    :param foreign_key: Dictionary containing Foreign key details
+    :raises: HTTPError in the function caller
+    """
+    pages_data = most_recent_page_data['data']  # First page data
+
+    while most_recent_page_data['links'].get('next'):
+        resp = _retryable(
+            'get',
+            f'{host}{most_recent_page_data["links"]["next"]}',
+            verify=False
+        )
+        most_recent_page_data = resp.json()
+
+        mutate_with_foreign_key(most_recent_page_data['data'], foreign_key)
+        pages_data += most_recent_page_data['data']
+
+        prometheus_metrics.METRICS['get_successes'].inc()
+
+    return pages_data
+
+
+def query_main_collection(
+        host: str,
+        endpoint: str,
+        main_collection: str,
+        query_string: str
+) -> dict:
+    """Query a Collection.
+
+    Returns a Response object with data retrieved from all pages
+    :param host: The host
+    :param endpoint: API Endpoint
+    :param main_collection: Collection name ('container_nodes', 'sources' etc)
+    :param query_string: Query string as additional params to the GET request
+    :return: Response object with data retrieved from all pages
+    :raises: HTTPError in the function caller
+    """
+    all_data = []
+    # First GET call to get data as well as pagination links
+    resp = _retryable(
+        'get',
+        f'{host}{endpoint}/{main_collection}',
+        params={query_string: ''},
+        verify=False
+    )
+    out = resp.json()
+    prometheus_metrics.METRICS['get_successes'].inc()
+
+    all_data += aggregated_pagination_data(host, out)
+    return all_data
+
+
+def query_sub_collection(
+        host: str,
+        endpoint: str,
+        main_collection: str,
+        sub_collection: str,
+        query_string: str,
+        collection: list,
+        foreign_key: str
+) -> dict:
+    """Query a SubCollection for all records in the main collection.
+
+    Returns a Response object with data retrieved from all pages
+    :param host: The host
+    :param endpoint: API Endpoint
+    :param main_collection: Collection name ('container_nodes', 'sources' etc)
+    :param sub_collection: Sub-Collection name ('tags')
+    :param query_string: Query string as additional params to the GET request
+    :param collection: List of all main collection items
+    :param foreign_key: Foreign key to be added to sub-collection records
+    :return: Response object with sub-collection data retrieved from all pages
+    :raises: HTTPError in the function caller
+    """
+    all_data = []
+    for item in collection:
+        # First GET call to get data as well as pagination links
+        url = \
+            f'{host}{endpoint}/{main_collection}/{item["id"]}/{sub_collection}'
+        resp = _retryable(
+            'get',
+            url,
+            params={query_string: ''},
+            verify=False
+        )
+        out = resp.json()
+        prometheus_metrics.METRICS['get_successes'].inc()
+
+        foreign_key_details = {
+            'id': item['id'],
+            'name': foreign_key
+        }
+
+        mutate_with_foreign_key(out['data'], foreign_key_details)
+
+        all_data += aggregated_pagination_data(host, out, foreign_key_details)
+    return all_data
+
+
 def download_job(
         source_url: str,
         source_id: str,
@@ -117,26 +241,53 @@ def download_job(
             'data': {}
         }
 
+        host = topology_info["host"]
+        endpoint = topology_info["endpoint"]
+
         for entity in topology_info['queries'].keys():
             prometheus_metrics.METRICS['gets'].inc()
 
-            query_string = topology_info['queries'][entity]
-            try:
-                resp = _retryable(
-                    'get',
-                    f'{topology_info["endpoint"]}/{entity}',
-                    params={query_string: ''},
-                    verify=False
-                )
-                data['data'][entity] = resp.json()
-                prometheus_metrics.METRICS['get_successes'].inc()
-            except requests.HTTPError as exception:
-                prometheus_metrics.METRICS['get_errors'].inc()
-                logger.error(
-                    '%s: Unable to fetch source data for "%s": %s',
-                    thread.name, source_id, exception
-                )
-                return
+            query_entity = topology_info['queries'][entity]
+            query_string = query_entity.get('query_string')
+            main_collection = query_entity.get('main_collection')
+            sub_collection = query_entity.get('sub_collection')
+            foreign_key = query_entity.get('foreign_key')
+
+            if sub_collection:
+                try:
+                    all_data = query_sub_collection(
+                        host,
+                        endpoint,
+                        main_collection,
+                        sub_collection,
+                        query_string,
+                        data['data'][main_collection],
+                        foreign_key
+                    )
+                except requests.HTTPError as exception:
+                    prometheus_metrics.METRICS['get_errors'].inc()
+                    logger.error(
+                        '%s: Unable to fetch source data for "%s": %s',
+                        thread.name, source_id, exception
+                    )
+                    return
+            else:
+                try:
+                    all_data = query_main_collection(
+                        host,
+                        endpoint,
+                        main_collection,
+                        query_string
+                    )
+                except requests.HTTPError as exception:
+                    prometheus_metrics.METRICS['get_errors'].inc()
+                    logger.error(
+                        '%s: Unable to fetch source data for "%s": %s',
+                        thread.name, source_id, exception
+                    )
+                    return
+
+            data['data'][entity] = all_data
 
         # Pass to next service
         prometheus_metrics.METRICS['posts'].inc()
