@@ -1,7 +1,7 @@
 swagger: '2.0'
-basePath: /r/insights/platform/aiops-data-collector
+basePath: /api/aiops-data-collector
 paths:
-  /api/v0/collect:
+  /v0/collect:
     post:
       responses:
         '200':
@@ -27,7 +27,7 @@ paths:
       operationId: get_root
       tags:
       - default
-  /api/v0/version:
+  /v0/version:
     get:
       responses:
         '200':
