@@ -1,7 +1,7 @@
 swagger: '2.0'
-basePath: /api/aiops-data-collector
+basePath: /
 paths:
-  /v0/collect:
+  /v0.1/collect:
     post:
       responses:
         '200':
@@ -27,7 +27,7 @@ paths:
       operationId: get_root
       tags:
       - default
-  /v0/version:
+  /v0.1/version:
     get:
       responses:
         '200':
@@ -47,7 +47,7 @@ paths:
       - default
 info:
   title: AIOPS Data Collector API
-  version: 0.0.1
+  version: 0.1
   description: AIOPS Data Collector API
 produces:
   - application/json
