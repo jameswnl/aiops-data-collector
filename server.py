@@ -24,35 +24,39 @@ ROOT_LOGGER = logging.getLogger()
 ROOT_LOGGER.setLevel(APP.logger.level)
 ROOT_LOGGER.addHandler(default_handler)
 
-VERSION = "0.0.1"
+API_VERSION = '0.1'
 
-ROUTE_PREFIX = "/api/aiops-data-collector"
+ROUTE_PREFIX = ''
+PATH_PREFIX = os.environ.get('PATH_PREFIX')
+if PATH_PREFIX:
+    APP_NAME = os.environ.get('APP_NAME', '')
+    ROUTE_PREFIX = f'/{PATH_PREFIX}/{APP_NAME}'
 
 # Schema for the Collect API
 SCHEMA = CollectJSONSchema()
 
 
-@APP.route(ROUTE_PREFIX, methods=['GET'])
+@APP.route(f'{ROUTE_PREFIX}/', methods=['GET'])
 def get_root():
     """Root Endpoint for 3scale."""
     return jsonify(
         status='OK',
-        version=VERSION,
+        version=API_VERSION,
         message='Up and Running'
     )
 
 
-@APP.route(f'{ROUTE_PREFIX}/v0/version', methods=['GET'])
+@APP.route(f'{ROUTE_PREFIX}/v{API_VERSION}/version', methods=['GET'])
 def get_version():
     """Endpoint for getting the current version."""
     return jsonify(
         status='OK',
-        version=VERSION,
-        message='AIOPS Data Collector Version 0.0.1'
+        version=API_VERSION,
+        message=f'AIOPS Data Collector Version v{API_VERSION}'
     )
 
 
-@APP.route(f'{ROUTE_PREFIX}/v0/collect', methods=['POST'])
+@APP.route(f'{ROUTE_PREFIX}/v{API_VERSION}/collect', methods=['POST'])
 def post_collect():
     """Endpoint servicing data collection."""
     input_data = request.get_json(force=True)
@@ -64,6 +68,7 @@ def post_collect():
         return jsonify(
             status='Error',
             errors=validation.errors,
+            version=API_VERSION,
             message='Input payload validation failed'
         ), 400
 
@@ -81,7 +86,11 @@ def post_collect():
     APP.logger.info('Job started.')
 
     prometheus_metrics.METRICS['jobs_initiated'].inc()
-    return jsonify(status="OK", message="Job initiated")
+    return jsonify(
+        status="OK",
+        version=API_VERSION,
+        message="Job initiated"
+    )
 
 
 @APP.route("/metrics", methods=['GET'])
