@@ -47,7 +47,7 @@ paths:
       - default
 info:
   title: AIOPS Data Collector API
-  version: 0.1
+  version: '0.1'
   description: AIOPS Data Collector API
 produces:
   - application/json
