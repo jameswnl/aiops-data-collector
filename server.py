@@ -15,6 +15,8 @@ def create_application():
     app = Flask(__name__)
     app.config['NEXT_MICROSERVICE_HOST'] = \
         os.environ.get('NEXT_MICROSERVICE_HOST')
+    app.config['APP_NAME'] = \
+        os.environ.get('APP_NAME')
 
     return app
 
@@ -73,6 +75,7 @@ def post_collect():
         ), 400
 
     next_service = APP.config['NEXT_MICROSERVICE_HOST']
+    app_name = APP.config['APP_NAME']
     source_id = input_data.get('payload_id')
 
     b64_identity = request.headers.get('x-rh-identity')
@@ -81,6 +84,7 @@ def post_collect():
         input_data.get('url'),
         source_id,
         next_service,
+        app_name,
         b64_identity
     )
     APP.logger.info('Job started.')
