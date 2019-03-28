@@ -26,6 +26,28 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
     INFO = {
         'host': HOST,
         'endpoint': ENDPOINT,
+        'queries_by_app': {
+            'aiops-volume-type-validation': [
+                'container_nodes',
+                'container_nodes_tags',
+                'vms',
+                'sources',
+                'volume_attachments',
+                'volumes',
+                'volume_types'
+            ],
+            'aiops-idle-cost-savings': [
+                'container_nodes',
+                'container_nodes_tags',
+                'vms',
+                'sources',
+                'container_groups',
+                'containers',
+                'container_resource_quotas',
+                'container_projects',
+                'flavors'
+            ]
+        },
         'queries': {
             'container_nodes': {
                 'main_collection': 'container_nodes',
@@ -55,6 +77,27 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
             },
             'sources': {
                 'main_collection': 'sources',
+                'query_string': ''
+            },
+            'container_groups': {
+                'main_collection': 'container_groups',
+                'query_string': 'archived_at'
+            },
+            'containers': {
+                'main_collection': 'container_groups',
+                'sub_collection': 'containers',
+                'query_string': 'archived_at'
+            },
+            'container_resource_quotas': {
+                'main_collection': 'container_resource_quotas',
+                'query_string': 'archived_at'
+            },
+            'container_projects': {
+                'main_collection': 'container_projects',
+                'query_string': 'archived_at'
+            },
+            'flavors': {
+                'main_collection': 'flavors',
                 'query_string': ''
             }
         }

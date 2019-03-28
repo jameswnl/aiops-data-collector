@@ -172,6 +172,7 @@ def download_job(
         source_url: str,
         source_id: str,
         dest_url: str,
+        app_name: str,
         b64_identity: str = None
 ) -> None:
     """Spawn a thread worker for data downloading task.
@@ -244,7 +245,7 @@ def download_job(
         host = topology_info["host"]
         endpoint = topology_info["endpoint"]
 
-        for entity in topology_info['queries'].keys():
+        for entity in topology_info['queries_by_app'][app_name]:
             prometheus_metrics.METRICS['gets'].inc()
 
             query_entity = topology_info['queries'][entity]
