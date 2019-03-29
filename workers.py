@@ -309,9 +309,51 @@ def download_job(
 
         logger.debug('%s: Done, exiting', thread.name)
 
+    def worker_host(info: dict) -> None:
+        """Download and forward the content."""
+        thread = current_thread()
+        logger.debug('%s: Worker started', thread.name)
+
+        # Build the POST data object
+        data = {
+            'id': source_id,
+            'data': {}
+        }
+
+        url = info["host_inventory_url"]
+        prometheus_metrics.METRICS['gets'].inc()
+        resp = _retryable(
+            'get',
+            url,
+            params={},
+            verify=False
+        )
+        out = resp.json()
+        prometheus_metrics.METRICS['get_successes'].inc()
+
+        data['data'] =  out
+        # Pass to next service
+        prometheus_metrics.METRICS['posts'].inc()
+        try:
+            resp = _retryable(
+                'post',
+                f'http://{dest_url}',
+                json=data,
+                headers={"x-rh-identity": b64_identity}
+            )
+            prometheus_metrics.METRICS['post_successes'].inc()
+        except requests.HTTPError as exception:
+            logger.error(
+                '%s: Failed to pass data for "%s": %s',
+                thread.name, source_id, exception
+            )
+            prometheus_metrics.METRICS['post_errors'].inc()
+
+        logger.debug('%s: Done, exiting', thread.name)
     thread_mappings = {
         'worker_clustering': worker_clustering,
-        'worker_topology': worker_topology
+        'worker_topology': worker_topology,
+        'worker_host': worker_host,
     }
 
     name = target_worker.NAME
