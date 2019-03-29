@@ -104,6 +104,18 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
     }
 
 
+elif os.environ.get('INPUT_DATA_FORMAT') == 'HOST':
+    logger.info('Target Worker is Host')
+    host_inventory_url = os.environ.get('HOST_INVENTORY_URL')
+
+    if not host_inventory_url:
+        logger.error('Environment not set properly, '
+                     'missing HOST_INVENTORY_URL')
+        sys.exit(1)
+    NAME = 'worker_host'
+    INFO = {'host_inventory_url': host_inventory_url}
+
+
 else:
     logger.info('Target Worker is Clustering')
 
