@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 from io import BytesIO
 from threading import Thread, current_thread
@@ -314,24 +316,32 @@ def download_job(
         thread = current_thread()
         logger.debug('%s: Worker started', thread.name)
 
-        # Build the POST data object
-        data = {
-            'id': source_id,
-            'data': {}
-        }
+        identity = json.loads(base64.b64decode(b64_identity))
+        account_id = identity.get('identity').get('account_number')
+        # TODO: Check cached account list before proceed
+        logger.debug('to retrieve hosts of account_id: %s', account_id)
 
-        url = info["host_inventory_url"]
         prometheus_metrics.METRICS['gets'].inc()
         resp = _retryable(
             'get',
-            url,
-            params={},
+            info["host_inventory_url"],
+            headers={"x-rh-identity": b64_identity},
             verify=False
         )
         out = resp.json()
+
+        logger.debug(
+            'Received data for account_id=%s has count=%s',
+            account_id, out.get('count')
+        )
+
         prometheus_metrics.METRICS['get_successes'].inc()
 
-        data['data'] =  out
+        # Build the POST data object
+        data = {
+            'account': account_id,
+            'data': out,
+        }
         # Pass to next service
         prometheus_metrics.METRICS['posts'].inc()
         try:
