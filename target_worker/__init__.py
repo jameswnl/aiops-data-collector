@@ -50,8 +50,8 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
         },
         'queries': {
             'container_nodes': {
-                'main_collection': 'container_nodes',
-                'query_string': 'archived_at'
+                'main_collection': 'container_nodes?filter[archived_at][nil]',
+                'query_string': ''
             },
             'container_nodes_tags': {
                 'main_collection': 'container_nodes',
@@ -64,37 +64,37 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
                 'query_string': ''
             },
             'volumes': {
-                'main_collection': 'volumes',
-                'query_string': 'archived_at'
+                'main_collection': 'volumes?filter[archived_at][nil]',
+                'query_string': ''
             },
             'volume_types': {
                 'main_collection': 'volume_types',
                 'query_string': ''
             },
             'vms': {
-                'main_collection': 'vms',
-                'query_string': 'archived_at'
+                'main_collection': 'vms?filter[archived_at][nil]',
+                'query_string': ''
             },
             'sources': {
                 'main_collection': 'sources',
                 'query_string': ''
             },
             'container_groups': {
-                'main_collection': 'container_groups',
-                'query_string': 'archived_at'
+                'main_collection': 'container_groups?filter[archived_at][nil]',
+                'query_string': ''
             },
             'containers': {
-                'main_collection': 'container_groups',
+                'main_collection': 'container_groups?filter[archived_at][nil]',
                 'sub_collection': 'containers',
-                'query_string': 'archived_at'
+                'query_string': ''
             },
             'container_resource_quotas': {
-                'main_collection': 'container_resource_quotas',
-                'query_string': 'archived_at'
+                'main_collection': 'container_resource_quotas?filter[archived_at][nil]',
+                'query_string': ''
             },
             'container_projects': {
-                'main_collection': 'container_projects',
-                'query_string': 'archived_at'
+                'main_collection': 'container_projects?filter[archived_at][nil]',
+                'query_string': ''
             },
             'flavors': {
                 'main_collection': 'flavors',
