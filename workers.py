@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import math
 from io import BytesIO
 from threading import Thread, current_thread
 from uuid import uuid4
@@ -170,6 +171,33 @@ def query_sub_collection(
     return all_data
 
 
+def retrieve_hosts(host_inventory_url, b64_identity):
+    headers = {"x-rh-identity": b64_identity}
+    url = host_inventory_url + '?page={}'
+    results = []
+    page = 1
+    pages = None
+    while True:
+        prometheus_metrics.METRICS['gets'].inc()
+        resp = _retryable(
+            'get',
+            url.format(page),
+            headers=headers,
+            verify=False
+        )
+        prometheus_metrics.METRICS['get_successes'].inc()
+        out = resp.json()
+        results.extend(out['results'])
+        pages = pages or math.ceil(out['total']/out['per_page'])
+        if page >= pages:
+            break
+        page += 1
+    return {
+        'results': results,
+        'total': out['total'],
+    }
+
+
 def download_job(
         source_url: str,
         source_id: str,
@@ -321,21 +349,11 @@ def download_job(
         # TODO: Check cached account list before proceed
         logger.debug('to retrieve hosts of account_id: %s', account_id)
 
-        prometheus_metrics.METRICS['gets'].inc()
-        resp = _retryable(
-            'get',
-            info["host_inventory_url"],
-            headers={"x-rh-identity": b64_identity},
-            verify=False
-        )
-        out = resp.json()
-
+        out = retrieve_hosts(info['host_inventory_url'], b64_identity)
         logger.debug(
-            'Received data for account_id=%s has count=%s',
-            account_id, out.get('count')
+            'Received data for account_id=%s has total=%s',
+            account_id, out.get('total')
         )
-
-        prometheus_metrics.METRICS['get_successes'].inc()
 
         # Build the POST data object
         data = {
@@ -345,7 +363,7 @@ def download_job(
         # Pass to next service
         prometheus_metrics.METRICS['posts'].inc()
         try:
-            resp = _retryable(
+            _retryable(
                 'post',
                 f'http://{dest_url}',
                 json=data,
