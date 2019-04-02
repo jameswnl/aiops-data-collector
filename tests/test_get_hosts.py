@@ -36,7 +36,7 @@ class TestGetHosts(unittest.TestCase):
         assert results['results'] == list(range(4))
         _retryable.assert_called_once_with(
             'get',
-            'inv.svc?page=1',
+            'inv.svc&page=1',
             headers={"x-rh-identity": 'identity_b64'},
             verify=False,
         )
@@ -54,13 +54,13 @@ class TestGetHosts(unittest.TestCase):
         calls = [
             mock.call(
                 'get',
-                'inv.svc?page=1',
+                'inv.svc&page=1',
                 headers={"x-rh-identity": 'identity_b64'},
                 verify=False,
             ),
             mock.call(
                 'get',
-                'inv.svc?page=2',
+                'inv.svc&page=2',
                 headers={"x-rh-identity": 'identity_b64'},
                 verify=False,
             ),
