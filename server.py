@@ -3,6 +3,8 @@ import os
 
 from flask import Flask, jsonify, request
 from flask.logging import default_handler
+from jinja2 import Template
+import yaml
 
 import workers
 import prometheus_metrics
@@ -24,7 +26,7 @@ ROOT_LOGGER = logging.getLogger()
 ROOT_LOGGER.setLevel(APP.logger.level)
 ROOT_LOGGER.addHandler(default_handler)
 
-API_VERSION = '0.1'
+API_VERSION = '1.0'
 
 ROUTE_PREFIX = ''
 PATH_PREFIX = os.environ.get('PATH_PREFIX')
@@ -97,6 +99,16 @@ def post_collect():
 def get_metrics():
     """Metrics Endpoint."""
     return prometheus_metrics.generate_aggregated_metrics()
+
+
+@APP.route(f'{ROUTE_PREFIX}/v{API_VERSION}/openapi.json')
+def get_openapi():
+    """Provide OpenAPI v3 scheme."""
+    with open('openapi.yml.j2') as f:
+        template = Template(f.read())
+
+    spec = template.render(route_prefix=ROUTE_PREFIX, api_version=API_VERSION)
+    return jsonify(yaml.load(spec))
 
 
 if __name__ == "__main__":
