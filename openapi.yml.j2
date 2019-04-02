@@ -1,0 +1,119 @@
+openapi: '3.0.0'
+paths:
+  {{ route_prefix }}/v{{ api_version }}/collect:
+    post:
+      description: Post a request for pipeline to be triggered
+      operationId: post_collect
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Job initiated
+                  status:
+                    type: string
+                    example: OK
+                  version:
+                    type: string
+                    example: '{{ api_version }}'
+        '400':
+          description: Input payload validation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Input payload validation failed
+                  status:
+                    type: string
+                    example: Error
+                  version:
+                    type: string
+                    example: '{{ api_version }}'
+                  errors:
+                    type: object
+      requestBody:
+        description: Required data content
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+  {{ route_prefix }}/v{{ api_version }}/version:
+    get:
+      description: Get version identifying information
+      operationId: get_version
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: AIOPS Data Collector Version v{{ api_version }}
+                  status:
+                    type: string
+                    example: OK
+                  version:
+                    type: string
+                    example: '{{ api_version }}'
+  {{ route_prefix }}/v{{ api_version }}/openapi.json:
+    get:
+      description: Get API scheme in OpenAPI v3 format
+      operationId: get_openapi
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  {{ route_prefix }}:
+    get:
+      description: Used for OpenShift Liveliness probes
+      operationId: get_root
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Up and Running
+                  status:
+                    type: string
+                    example: OK
+                  version:
+                    type: string
+                    example: '{{ api_version }}'
+  "/metrics":
+    get:
+      description: Get metrics for data collector
+      operationId: get_metrics
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+info:
+  title: "AI-Ops: {{ ai_service }}"
+  version: '{{ api_version }}'
+  description: "Gateway service and data collector for AI pipeline providing advanced analytics: {{ ai_service }}"
+  contact:
+    email: AI-Ops@redhat.com
+tags: []
