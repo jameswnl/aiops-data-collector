@@ -171,9 +171,9 @@ def query_sub_collection(
     return all_data
 
 
-def retrieve_hosts(host_inventory_url, b64_identity):
+def retrieve_hosts(host_inventory_url, b64_identity) -> dict:
     headers = {"x-rh-identity": b64_identity}
-    url = host_inventory_url + '?page={}'
+    url = host_inventory_url + '&page={}'
     results = []
     page = 1
     pages = None

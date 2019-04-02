@@ -107,13 +107,16 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
 elif os.environ.get('INPUT_DATA_FORMAT') == 'HOST':
     logger.info('Target Worker is Host')
     HOST_INVENTORY_URL = os.environ.get('HOST_INVENTORY_URL')
+    PER_PAGE = os.environ.get('HOST_INVENTORY_PER_PAGE', 50)
 
     if not HOST_INVENTORY_URL:
         logger.error('Environment not set properly, '
                      'missing HOST_INVENTORY_URL')
         sys.exit(1)
     NAME = 'worker_host'
-    INFO = {'host_inventory_url': HOST_INVENTORY_URL}
+
+    url = HOST_INVENTORY_URL + '?per_page=' + PER_PAGE
+    INFO = {'host_inventory_url': url}
 
 
 else:
