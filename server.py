@@ -38,7 +38,7 @@ if PATH_PREFIX:
 SCHEMA = CollectJSONSchema()
 
 
-@APP.route(f'{ROUTE_PREFIX}/', methods=['GET'])
+@APP.route(f'{ROUTE_PREFIX}/', methods=['GET'], strict_slashes=False)
 def get_root():
     """Root Endpoint for 3scale."""
     return jsonify(

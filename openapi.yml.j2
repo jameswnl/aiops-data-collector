@@ -78,7 +78,7 @@ paths:
             application/json:
               schema:
                 type: object
-  {{ route_prefix }}:
+  {{ route_prefix }}/:
     get:
       description: Used for OpenShift Liveliness probes
       operationId: get_root
