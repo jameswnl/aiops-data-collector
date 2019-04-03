@@ -14,12 +14,11 @@ logger = logging.getLogger()
 if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
     logger.info('Target Worker is Topology')
 
-    HOST = os.environ.get('TOPOLOGY_INVENTORY_HOST')
-    ENDPOINT = os.environ.get('TOPOLOGY_INVENTORY_ENDPOINT')
+    HOST = os.environ.get('TOPOLOGICAL_INVENTORY_HOST')
+    ENDPOINT = os.environ.get('TOPOLOGICAL_INVENTORY_PATH')
 
-    if not ENDPOINT:
-        logger.error('Environment not set properly, '
-                     'missing TOPOLOGY_INVENTORY_ENDPOINT')
+    if not (ENDPOINT and HOST):
+        logger.error('Environment not set properly, for Topological')
         sys.exit(1)
 
     NAME = 'worker_topology'

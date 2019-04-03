@@ -247,7 +247,7 @@ def download_job(
         try:
             resp = _retryable(
                 'post',
-                f'http://{dest_url}',
+                dest_url,
                 data=custom_parser.parse(file_obj),
                 headers=headers
             )
@@ -325,7 +325,7 @@ def download_job(
         try:
             resp = _retryable(
                 'post',
-                f'http://{dest_url}',
+                dest_url,
                 json=data,
                 headers={"x-rh-identity": b64_identity}
             )
@@ -365,7 +365,7 @@ def download_job(
         try:
             _retryable(
                 'post',
-                f'http://{dest_url}',
+                dest_url,
                 json=data,
                 headers={"x-rh-identity": b64_identity}
             )
