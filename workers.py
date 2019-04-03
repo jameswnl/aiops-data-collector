@@ -345,7 +345,7 @@ def download_job(
         logger.debug('%s: Worker started', thread.name)
 
         identity = json.loads(base64.b64decode(b64_identity))
-        account_id = identity.get('identity').get('account_number')
+        account_id = identity.get('identity', {}).get('account_number')
         # TODO: Check cached account list before proceed
         logger.debug('to retrieve hosts of account_id: %s', account_id)
 
