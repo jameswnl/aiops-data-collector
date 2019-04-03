@@ -32,8 +32,11 @@ def _retryable(method: str, *args, **kwargs) -> requests.Response:
     with requests.Session() as session:
         for attempt in range(MAX_RETRIES):
             try:
+                if method == 'post':
+                    logger.debug("to post %s ", *args)
                 resp = getattr(session, method)(*args, **kwargs)
-
+                if method == 'post':
+                    logger.debug("done post ")
                 resp.raise_for_status()
             except (requests.HTTPError, requests.ConnectionError) as e:
                 logger.warning(
@@ -361,14 +364,17 @@ def download_job(
             'data': out,
         }
         # Pass to next service
+        logger.debug("to prom")
         prometheus_metrics.METRICS['posts'].inc()
         try:
-            _retryable(
+            logger.debug(f"to retryable() http://{dest_url}")
+            resp = _retryable(
                 'post',
                 f'http://{dest_url}',
                 json=data,
                 headers={"x-rh-identity": b64_identity}
             )
+            logger.debug("done postting to dest_url: %s", resp.text)
             prometheus_metrics.METRICS['post_successes'].inc()
         except requests.HTTPError as exception:
             logger.error(
