@@ -9,121 +9,40 @@ import logging
 import os
 import sys
 
-logger = logging.getLogger()
+from host_inventory import worker as host
+from topological_inventory import worker as topology
+from client_upload import worker as upload
 
-if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
-    logger.info('Target Worker is Topology')
+LOGGER = logging.getLogger()
+TOPOLOGICAL_INVENTORY_HOST = os.environ.get('TOPOLOGICAL_INVENTORY_HOST ')
+TOPOLOGICAL_INVENTORY_PATH = os.environ.get('TOPOLOGICAL_INVENTORY_PATH')
+HOST_INVENTORY_HOST = os.environ.get('HOST_INVENTORY_HOST')
+HOST_INVENTORY_PATH = os.environ.get('HOST_INVENTORY_PATH')
+INPUT_DATA_FORMAT = os.environ.get('INPUT_DATA_FORMAT', '').upper()
 
-    HOST = os.environ.get('TOPOLOGICAL_INVENTORY_HOST')
-    ENDPOINT = os.environ.get('TOPOLOGICAL_INVENTORY_PATH')
+if INPUT_DATA_FORMAT == 'TOPOLOGY':
+    LOGGER.info('Target Worker is Topology')
+    WORKER = topology
 
-    if not (ENDPOINT and HOST):
-        logger.error('Environment not set properly, for Topological')
+    if not(TOPOLOGICAL_INVENTORY_HOST and  TOPOLOGICAL_INVENTORY_PATH):
+        LOGGER.error('Environment not set properly, for topological worker')
         sys.exit(1)
 
-    NAME = 'worker_topology'
-    INFO = {
-        'host': HOST,
-        'endpoint': ENDPOINT,
-        'queries_by_app': {
-            'aiops-volume-type-validation': [
-                'container_nodes',
-                'container_nodes_tags',
-                'vms',
-                'sources',
-                'volume_attachments',
-                'volumes',
-                'volume_types'
-            ],
-            'aiops-idle-cost-savings': [
-                'container_nodes',
-                'container_nodes_tags',
-                'vms',
-                'sources',
-                'container_groups',
-                'containers',
-                'container_resource_quotas',
-                'container_projects',
-                'flavors'
-            ]
-        },
-        'queries': {
-            'container_nodes': {
-                'main_collection': 'container_nodes?filter[archived_at][nil]',
-                'query_string': ''
-            },
-            'container_nodes_tags': {
-                'main_collection': 'container_nodes',
-                'sub_collection': 'tags',
-                'foreign_key': 'container_node_id',
-                'query_string': ''
-            },
-            'volume_attachments': {
-                'main_collection': 'volume_attachments',
-                'query_string': ''
-            },
-            'volumes': {
-                'main_collection': 'volumes?filter[archived_at][nil]',
-                'query_string': ''
-            },
-            'volume_types': {
-                'main_collection': 'volume_types',
-                'query_string': ''
-            },
-            'vms': {
-                'main_collection': 'vms?filter[archived_at][nil]',
-                'query_string': ''
-            },
-            'sources': {
-                'main_collection': 'sources',
-                'query_string': ''
-            },
-            'container_groups': {
-                'main_collection': 'container_groups?filter[archived_at][nil]',
-                'query_string': ''
-            },
-            'containers': {
-                'main_collection': 'container_groups?filter[archived_at][nil]',
-                'sub_collection': 'containers',
-                'query_string': ''
-            },
-            'container_resource_quotas': {
-                'main_collection': 'container_resource_quotas?filter[archived_at][nil]',
-                'query_string': ''
-            },
-            'container_projects': {
-                'main_collection': 'container_projects?filter[archived_at][nil]',
-                'query_string': ''
-            },
-            'flavors': {
-                'main_collection': 'flavors',
-                'query_string': ''
-            }
-        }
-    }
+elif INPUT_DATA_FORMAT == 'HOST':
+    LOGGER.info('Target Worker is Host')
+    WORKER = host
 
+    if not (HOST_INVENTORY_HOST and HOST_INVENTORY_PATH):
+        LOGGER.error('Environment not set properly, for host inventory worker')
+        sys.exit(1)
 
-elif os.environ.get('INPUT_DATA_FORMAT') == 'HOST':
-    logger.info('Target Worker is Host')
-    HOST_INVENTORY_HOST = os.environ.get('HOST_INVENTORY_HOST')
-    HOST_INVENTORY_PATH = os.environ.get('HOST_INVENTORY_PATH')
     PER_PAGE = os.environ.get('HOST_INVENTORY_PER_PAGE', 50)
+    URL = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}?per_page=' + PER_PAGE
 
-    if not HOST_INVENTORY_HOST and HOST_INVENTORY_PATH:
-        logger.error('Environment not set properly, '
-                     'missing HOST_INVENTORY_HOST and/or HOST_INVENTORY_PATH')
-        sys.exit(1)
-    NAME = 'worker_host'
-
-    url = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}?per_page=' + PER_PAGE
-    INFO = {'host_inventory_url': url}
-
+elif INPUT_DATA_FORMAT == 'CLIENT':
+    LOGGER.info('Target Worker is Client upload')
+    WORKER = upload
 
 else:
-    logger.info('Target Worker is Clustering')
-
-    NAME = 'worker_clustering'
-    INFO = {}
-
-
-__all__ = ['NAME', 'INFO']
+    LOGGER.warning('No worker set. Exiting.')
+    sys.exit(1)
