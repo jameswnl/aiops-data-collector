@@ -1,4 +1,7 @@
+import base64
+import json
 import logging
+import math
 from io import BytesIO
 from threading import Thread, current_thread
 from uuid import uuid4
@@ -168,6 +171,33 @@ def query_sub_collection(
     return all_data
 
 
+def retrieve_hosts(host_inventory_url, b64_identity) -> dict:
+    headers = {"x-rh-identity": b64_identity}
+    url = host_inventory_url + '&page={}'
+    results = []
+    page = 1
+    pages = None
+    while True:
+        prometheus_metrics.METRICS['gets'].inc()
+        resp = _retryable(
+            'get',
+            url.format(page),
+            headers=headers,
+            verify=False
+        )
+        prometheus_metrics.METRICS['get_successes'].inc()
+        out = resp.json()
+        results.extend(out['results'])
+        pages = pages or math.ceil(out['total']/out['per_page'])
+        if page >= pages:
+            break
+        page += 1
+    return {
+        'results': results,
+        'total': out['total'],
+    }
+
+
 def download_job(
         source_url: str,
         source_id: str,
@@ -309,9 +339,49 @@ def download_job(
 
         logger.debug('%s: Done, exiting', thread.name)
 
+    def worker_host(info: dict) -> None:
+        """Download and forward the content."""
+        thread = current_thread()
+        logger.debug('%s: Worker started', thread.name)
+
+        identity = json.loads(base64.b64decode(b64_identity))
+        account_id = identity.get('identity', {}).get('account_number')
+        # TODO: Check cached account list before proceed
+        logger.debug('to retrieve hosts of account_id: %s', account_id)
+
+        out = retrieve_hosts(info['host_inventory_url'], b64_identity)
+        logger.debug(
+            'Received data for account_id=%s has total=%s',
+            account_id, out.get('total')
+        )
+
+        # Build the POST data object
+        data = {
+            'account': account_id,
+            'data': out,
+        }
+        # Pass to next service
+        prometheus_metrics.METRICS['posts'].inc()
+        try:
+            _retryable(
+                'post',
+                f'http://{dest_url}',
+                json=data,
+                headers={"x-rh-identity": b64_identity}
+            )
+            prometheus_metrics.METRICS['post_successes'].inc()
+        except requests.HTTPError as exception:
+            logger.error(
+                '%s: Failed to pass data for "%s": %s',
+                thread.name, source_id, exception
+            )
+            prometheus_metrics.METRICS['post_errors'].inc()
+
+        logger.debug('%s: Done, exiting', thread.name)
     thread_mappings = {
         'worker_clustering': worker_clustering,
-        'worker_topology': worker_topology
+        'worker_topology': worker_topology,
+        'worker_host': worker_host,
     }
 
     name = target_worker.NAME

@@ -104,6 +104,22 @@ if os.environ.get('INPUT_DATA_FORMAT') == 'TOPOLOGY':
     }
 
 
+elif os.environ.get('INPUT_DATA_FORMAT') == 'HOST':
+    logger.info('Target Worker is Host')
+    HOST_INVENTORY_HOST = os.environ.get('HOST_INVENTORY_HOST')
+    HOST_INVENTORY_PATH = os.environ.get('HOST_INVENTORY_PATH')
+    PER_PAGE = os.environ.get('HOST_INVENTORY_PER_PAGE', 50)
+
+    if not HOST_INVENTORY_HOST and HOST_INVENTORY_PATH:
+        logger.error('Environment not set properly, '
+                     'missing HOST_INVENTORY_HOST and/or HOST_INVENTORY_PATH')
+        sys.exit(1)
+    NAME = 'worker_host'
+
+    url = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}?per_page=' + PER_PAGE
+    INFO = {'host_inventory_url': url}
+
+
 else:
     logger.info('Target Worker is Clustering')
 
