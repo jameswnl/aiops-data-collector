@@ -15,10 +15,8 @@ from collect_json_schema import CollectJSONSchema
 def create_application():
     """Create Flask application instance with AWS client enabled."""
     app = Flask(__name__)
-    app.config['NEXT_SERVICE_URL'] = \
-        os.environ.get('NEXT_SERVICE_URL')
-    app.config['APP_NAME'] = \
-        os.environ.get('APP_NAME')
+    app.config['NEXT_SERVICE_URL'] = os.environ.get('NEXT_SERVICE_URL')
+    app.config['APP_NAME'] = os.environ.get('APP_NAME')
 
     return app
 
@@ -27,6 +25,8 @@ APP = create_application()
 ROOT_LOGGER = logging.getLogger()
 ROOT_LOGGER.setLevel(APP.logger.level)
 ROOT_LOGGER.addHandler(default_handler)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 API_VERSION = '1.0'
 

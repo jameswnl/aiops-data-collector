@@ -6,7 +6,8 @@ import math
 from threading import current_thread
 
 import prometheus_metrics
-from . import utils, HOST_INVENTORY_HOST, HOST_INVENTORY_PATH
+from . import utils
+from .env import HOST_INVENTORY_HOST, HOST_INVENTORY_PATH
 
 LOGGER = logging.getLogger()
 URL = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}'
@@ -26,13 +27,15 @@ def _retrieve_hosts(headers: dict) -> dict:
         Host collection
 
     """
-    url = URL + '&page={}'
+    url = URL + '?per_page=50&page={}'
 
     # Perform initial request
+    prometheus_metrics.METRICS['gets'].inc()
     resp = utils.retryable(
         'get', url.format(1), headers=headers
     )
     resp = resp.json()
+    prometheus_metrics.METRICS['get_successes'].inc()
     results = resp['results']
     total = resp['total']
     # Iterate next pages if any
@@ -75,7 +78,15 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
 
     headers = {"x-rh-identity": b64_identity}
 
-    out = _retrieve_hosts(headers)
+    try:
+        out = _retrieve_hosts(headers)
+    except utils.RetryFailedError as exception:
+        prometheus_metrics.METRICS['get_errors'].inc()
+        LOGGER.error(
+            '%s: Unable to fetch source data for "%s": %s',
+            thread.name, source_id, exception
+        )
+        return
     LOGGER.debug(
         'Received data for account_id=%s has total=%s',
         account_id, out.get('total')

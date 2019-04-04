@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from target_worker import WORKER
 
-logger = logging.getLogger()
+LOGGER = logging.getLogger()
 
 LIVE_THREADS = []
 
@@ -20,7 +20,7 @@ def download_job(
     Requests the data to be downloaded and pass it to the next service
 
     Args:
-        _source (str): URL of the source
+        source_url (str): URL of the source
         source_id (str): Job identifier
         dest (str): URL where to pass data
         b64_identity (str): Red Hat Identity base64 string
@@ -40,3 +40,4 @@ def download_job(
     for thread in LIVE_THREADS:
         if not thread.is_alive():
             thread.join()
+            LIVE_THREADS.remove(thread)

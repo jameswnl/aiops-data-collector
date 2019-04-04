@@ -3,9 +3,13 @@ from threading import current_thread
 
 import requests
 
+from .env import SSL_VERIFY
+
 CHUNK = 10240
 MAX_RETRIES = 3
 LOGGER = logging.getLogger()
+
+requests.packages.urllib3.disable_warnings()
 
 
 class RetryFailedError(requests.HTTPError):
@@ -26,11 +30,14 @@ def retryable(method: str, *args, **kwargs) -> requests.Response:
     :raises: HTTPError when all requests fail
     """
     thread = current_thread()
+    request_kwargs = dict(verify=SSL_VERIFY)
+    request_kwargs.update(kwargs)
 
     with requests.Session() as session:
         for attempt in range(MAX_RETRIES):
+            LOGGER.debug('Accessing url:\t %s', args[0])
             try:
-                resp = getattr(session, method)(*args, **kwargs)
+                resp = getattr(session, method)(*args, **request_kwargs)
 
                 resp.raise_for_status()
             except (requests.HTTPError, requests.ConnectionError) as e:

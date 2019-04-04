@@ -4,10 +4,13 @@ from threading import current_thread
 import yaml
 
 import prometheus_metrics
-from . import (utils, TOPOLOGICAL_INVENTORY_HOST, TOPOLOGICAL_INVENTORY_PATH,
-               APP_NAME)
+from . import utils
+from .env import (APP_NAME,
+                  TOPOLOGICAL_INVENTORY_HOST, TOPOLOGICAL_INVENTORY_PATH)
 
 LOGGER = logging.getLogger()
+CONFIG_DIR = 'target_worker/configs'
+BASE_URL = f'{TOPOLOGICAL_INVENTORY_HOST}/{TOPOLOGICAL_INVENTORY_PATH}'
 
 
 def _load_yaml(filename: str) -> dict:
@@ -25,12 +28,11 @@ def _load_yaml(filename: str) -> dict:
 
     """
     with open(filename) as yaml_file:
-        return yaml.load(yaml_file)
+        return yaml.full_load(yaml_file)
 
 
-APP_CONFIG = _load_yaml('configs/topological_per_app_settings.yml')[APP_NAME]
-QUERIES = _load_yaml('configs/topological_queries.yml')
-BASE_URL = f'{TOPOLOGICAL_INVENTORY_HOST}/{TOPOLOGICAL_INVENTORY_PATH}'
+APP_CONFIG = _load_yaml(f'{CONFIG_DIR}/topological_app_config.yml')[APP_NAME]
+QUERIES = _load_yaml(f'{CONFIG_DIR}/topological_queries.yml')
 
 
 def _update_fk(page_data: list, fk_name: str, fk_id: str) -> dict:
@@ -204,6 +206,7 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
                     foreign_key
                 )
             except utils.RetryFailedError as exception:
+                prometheus_metrics.METRICS['get_errors'].inc()
                 LOGGER.error(
                     '%s: Unable to fetch source data for "%s": %s',
                     thread.name, source_id, exception
