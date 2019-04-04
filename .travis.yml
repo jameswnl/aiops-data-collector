@@ -7,6 +7,9 @@ install:
 - pipenv sync --dev
 script:
 - pylama
+- pytest --cov=. --cov-report=xml
+after_success:
+- bash <(curl -s https://codecov.io/bash)
 notifications:
   slack:
     secure: Yg27E+vlRnZ8x4WcGd1Uv/oVnubmNu8zAf+7p6bQClGtCNKUqBLaKJVCcnteZhZgDi7JjSfRbmeZyto2dnaxbauEN5zmOhjFDSL+3VZiy0x/sYVxeysIDFu7THixanZiM29Hwsk+9tZYIs+RQJqryjkvYk18Auj/bQ5KWVBwDiMKI15uWhUK69mX4vCiuMmyjU0+/i5mCPBygc5hmu5jT3mJ5UhOvCNj88klA/Wkd1IV+BYJrY6wtIzOmp2PyOkNi/ivxxq7bthCr00LOj2XNW3Q1tBOBCDWe5+X62KK7pCPsp0Z7eyFf8Obuw+l99Q86kgMWAzXextnNZ/5J5hs9P7VfdITtw++7khAt7k6PgULwiH/OJYj9fNpJWvW5fdMXC8zldGQAzZkr8pn8XgcdCO9kLOL0GdWDVukRCvg108DEbIWaBy6ncB/4Jq4UtfVzEOg3QM9LPj1i1dN18UNh2Wk4PStzW4J87zE+KLEVJshkuSkFeCQnLaX3SBgU1pnZSq70z62Ma30CBj+lKq0d4A24izQb/omlHjNYATHlHGIp59+FhBroozjSlk++34nKJn6ygEhVhwXzzNvYdcZtZw6EQByL5VO1D++XdLo8fLTuJmeYg4EW3a3BCvt4at21aisqyfgcyc8YZV9V/GpevH3ieA++IBvqTJEi8LxHS4=
