@@ -15,8 +15,8 @@ from collect_json_schema import CollectJSONSchema
 def create_application():
     """Create Flask application instance with AWS client enabled."""
     app = Flask(__name__)
-    app.config['NEXT_MICROSERVICE_HOST'] = \
-        os.environ.get('NEXT_MICROSERVICE_HOST')
+    app.config['NEXT_SERVICE_URL'] = \
+        os.environ.get('NEXT_SERVICE_URL')
     app.config['APP_NAME'] = \
         os.environ.get('APP_NAME')
 
@@ -76,7 +76,7 @@ def post_collect():
             message='Input payload validation failed'
         ), 400
 
-    next_service = APP.config['NEXT_MICROSERVICE_HOST']
+    next_service = APP.config['NEXT_SERVICE_URL']
     app_name = APP.config['APP_NAME']
     source_id = input_data.get('payload_id')
 
