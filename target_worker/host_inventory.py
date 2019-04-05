@@ -15,11 +15,16 @@ URL = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}'
 def _retrieve_hosts(headers: dict) -> dict:
     """Collect all hosts for account.
 
-    Args:
-        headers (dict): HTTP Headers that will be used to request data
+    Parameters
+    ----------
+    headers (dict)
+        HTTP Headers that will be used to request data
 
-    Returns:
-        dict: Host collection
+    Returns
+    -------
+    dict
+        Host collection
+
     """
     url = URL + '&page={}'
 
@@ -44,14 +49,19 @@ def _retrieve_hosts(headers: dict) -> dict:
     return dict(results=results, total=total)
 
 
-def worker(_source: str, source_id: str, dest: str, b64_identity: str):
+def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
     """Worker for host inventory.
 
-    Args:
-        _source (str): URL of the source
-        source_id (str): Job identifier
-        dest (str): URL where to pass data
-        b64_identity (str): Red Hat Identity base64 string
+    Parameters
+    ----------
+    _ (str)
+        Skipped
+    source_id (str)
+        Job identifier
+    dest (str)
+        URL where to pass data
+    b64_identity (str)
+        Red Hat Identity base64 string
 
     """
     thread = current_thread()

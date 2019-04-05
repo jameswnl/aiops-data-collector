@@ -12,7 +12,19 @@ LOGGER = logging.getLogger()
 
 
 def _only_csv_file(member: tarfile.TarInfo) -> bool:
-    """Selector for CSV files only in a TAR file."""
+    """Selector for CSV files only in a TAR file.
+
+    Parameters
+    ----------
+    member (tarfile.TarInfo)
+        Tar archive member file
+
+    Returns
+    -------
+    bool
+        Check if the file is a CSV
+
+    """
     return member.name.endswith('.csv')
 
 
@@ -21,7 +33,17 @@ def _csv_parser(file_obj: BytesIO) -> bytes:
 
     Extracts all CSV files from a TAR.GZ archive and combines them into a list
     of dictionary objects.
-    :param filename: Name of the filename to parse
+
+    Parameters
+    ----------
+    file_obj (BytesIO)
+        Name of the filename to parse
+
+    Returns
+    -------
+    bytes
+        Iterator over the archive content
+
     """
     with tarfile.open(fileobj=file_obj) as tar:
         # Read just the first CSV available
@@ -36,14 +58,20 @@ def _csv_parser(file_obj: BytesIO) -> bytes:
         yield from iter(lambda: csv_data.read(BUFFER_SIZE), b'')
 
 
-def worker(source_url, source_id, dest_url, b64_identity):
+def worker(source_url: str, source_id: str,
+           dest_url: str, b64_identity: str) -> None:
     """Worker for Insights Client uploads.
 
-    Args:
-        source_url (str): URL of the source
-        source_id (str): Job identifier
-        dest (str): URL where to pass data
-        b64_identity (str): Red Hat Identity base64 string
+    Parameters
+    ----------
+    source_url (str)
+        URL of the source
+    source_id (str)
+        Job identifier
+    dest_url (str)
+        URL where to pass data
+    b64_identity (str)
+        Red Hat Identity base64 string
 
     """
     thread = current_thread()

@@ -13,13 +13,17 @@ from host_inventory import worker as host
 from topological_inventory import worker as topology
 from client_upload import worker as upload
 
+
 LOGGER = logging.getLogger()
+
+# Load constants from environment
 TOPOLOGICAL_INVENTORY_HOST = os.environ.get('TOPOLOGICAL_INVENTORY_HOST ')
 TOPOLOGICAL_INVENTORY_PATH = os.environ.get('TOPOLOGICAL_INVENTORY_PATH')
 HOST_INVENTORY_HOST = os.environ.get('HOST_INVENTORY_HOST')
 HOST_INVENTORY_PATH = os.environ.get('HOST_INVENTORY_PATH')
 INPUT_DATA_FORMAT = os.environ.get('INPUT_DATA_FORMAT', '').upper()
 
+# Decide which worker should be used
 if INPUT_DATA_FORMAT == 'TOPOLOGY':
     LOGGER.info('Target Worker is Topology')
     WORKER = topology
