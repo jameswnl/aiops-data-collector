@@ -1,4 +1,5 @@
 import logging
+import os
 from threading import current_thread
 
 import yaml
@@ -9,7 +10,7 @@ from .env import (APP_NAME,
                   TOPOLOGICAL_INVENTORY_HOST, TOPOLOGICAL_INVENTORY_PATH)
 
 LOGGER = logging.getLogger()
-CONFIG_DIR = 'collector/configs'
+CFG_DIR = '{}/configs'.format(os.path.dirname(__file__))
 BASE_URL = f'{TOPOLOGICAL_INVENTORY_HOST}/{TOPOLOGICAL_INVENTORY_PATH}'
 
 
@@ -31,8 +32,8 @@ def _load_yaml(filename: str) -> dict:
         return yaml.full_load(yaml_file)
 
 
-APP_CONFIG = _load_yaml(f'{CONFIG_DIR}/topological_app_config.yml')[APP_NAME]
-QUERIES = _load_yaml(f'{CONFIG_DIR}/topological_queries.yml')
+APP_CONFIG = _load_yaml(f'{CFG_DIR}/topological_app_config.yml').get(APP_NAME)
+QUERIES = _load_yaml(f'{CFG_DIR}/topological_queries.yml')
 
 
 def _update_fk(page_data: list, fk_name: str, fk_id: str) -> dict:

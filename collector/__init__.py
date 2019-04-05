@@ -41,5 +41,4 @@ elif INPUT_DATA_FORMAT == 'CLIENT':
     WORKER = upload
 
 else:
-    LOGGER.warning('No worker set. Exiting.')
-    sys.exit(1)
+    LOGGER.warning('No worker set.')

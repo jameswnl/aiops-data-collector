@@ -1,4 +1,5 @@
 from imp import reload
+import os
 
 import pytest
 
@@ -19,7 +20,10 @@ def patch_env(monkeypatch):
         monkeypatch.setenv(item, value)
 
     # Drop extra variables
-    monkeypatch.delenv('SSL_VERIFY')
+    delenv = ('SSL_VERIFY',)
+    for item in delenv:
+        if item in os.environ:
+            monkeypatch.delenv('SSL_VERIFY')
 
     # Reload modules
     reload(collector.env)
