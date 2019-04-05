@@ -77,7 +77,6 @@ def post_collect():
         ), 400
 
     next_service = APP.config['NEXT_SERVICE_URL']
-    app_name = APP.config['APP_NAME']
     source_id = input_data.get('payload_id')
 
     b64_identity = request.headers.get('x-rh-identity')

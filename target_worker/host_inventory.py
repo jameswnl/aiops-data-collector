@@ -27,25 +27,21 @@ def _retrieve_hosts(headers: dict) -> dict:
         Host collection
 
     """
-    url = URL + '?per_page=50&page={}'
+    url = URL + '/hosts?per_page=50&page={}'
 
     # Perform initial request
     prometheus_metrics.METRICS['gets'].inc()
-    resp = utils.retryable(
-        'get', url.format(1), headers=headers
-    )
-    resp = resp.json()
+    resp = utils.retryable('get', url.format(1), headers=headers)
     prometheus_metrics.METRICS['get_successes'].inc()
+    resp = resp.json()
     results = resp['results']
     total = resp['total']
     # Iterate next pages if any
     pages = math.ceil(total / resp['per_page'])
 
-    for page in range(2, pages):
+    for page in range(2, pages+1):
         prometheus_metrics.METRICS['gets'].inc()
-        resp = utils.retryable(
-            'get', url.format(page), headers=headers
-        )
+        resp = utils.retryable('get', url.format(page), headers=headers)
         prometheus_metrics.METRICS['get_successes'].inc()
         results += resp.json()['results']
 

@@ -9,6 +9,7 @@ CHUNK = 10240
 MAX_RETRIES = 3
 LOGGER = logging.getLogger()
 
+# pylama:ignore=E1101
 requests.packages.urllib3.disable_warnings()
 
 

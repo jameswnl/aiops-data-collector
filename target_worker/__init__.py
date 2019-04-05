@@ -13,7 +13,9 @@ import sys
 from .host_inventory import worker as host
 from .topological_inventory import worker as topology
 from .client_upload import worker as upload
-from .env import *
+from .env import (INPUT_DATA_FORMAT,
+                  TOPOLOGICAL_INVENTORY_HOST, TOPOLOGICAL_INVENTORY_PATH,
+                  HOST_INVENTORY_HOST, HOST_INVENTORY_PATH)
 
 LOGGER = logging.getLogger()
 

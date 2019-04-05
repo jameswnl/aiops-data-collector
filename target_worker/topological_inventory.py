@@ -91,8 +91,8 @@ def _collect_data(url: str, fk_name: str = None, fk_id: str = None) -> dict:
     # Collect data from the first page
     prometheus_metrics.METRICS['gets'].inc()
     resp = utils.retryable('get', url)
-    resp = resp.json()
     prometheus_metrics.METRICS['get_successes'].inc()
+    resp = resp.json()
     all_data = resp['data']
 
     # Walk all pages
