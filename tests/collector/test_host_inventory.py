@@ -1,4 +1,4 @@
-import target_worker
+import collector
 
 # R0201 = Method could be a function Used when a method doesn't use its bound
 # instance, and so could be written as a function.
@@ -8,7 +8,7 @@ import target_worker
 
 
 class TestRetrieveHosts:
-    """Test. `worker_host` function."""
+    """Test `worker_host` function."""
 
     def test_get_single_pages(self, mocker):
         """When results are in one page."""
@@ -16,11 +16,11 @@ class TestRetrieveHosts:
         page1.json.return_value = \
             dict(page=1, total=4, per_page=5, results=[0, 1, 2, 3])
         retryable = mocker.patch.object(
-            target_worker.utils, 'retryable', side_effect=[page1]
+            collector.utils, 'retryable', side_effect=[page1]
         )
 
         headers = {"x-rh-identity": 'identity_b64'}
-        results = target_worker.host_inventory._retrieve_hosts(headers)
+        results = collector.host_inventory._retrieve_hosts(headers)
 
         assert results['results'] == list(range(4))
         retryable.assert_called_once_with(
@@ -40,11 +40,11 @@ class TestRetrieveHosts:
         page1.json.return_value = responses[0]
         page2.json.return_value = responses[1]
         retryable = mocker.patch.object(
-            target_worker.utils, 'retryable', side_effect=[page1, page2]
+            collector.utils, 'retryable', side_effect=[page1, page2]
         )
 
         headers = {"x-rh-identity": 'identity_b64'}
-        results = target_worker.host_inventory._retrieve_hosts(headers)
+        results = collector.host_inventory._retrieve_hosts(headers)
 
         assert results['results'] == list(range(9))
         assert retryable.call_count == 2

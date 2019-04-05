@@ -70,7 +70,7 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
     account_id = identity.get('identity', {}).get('account_number')
     LOGGER.debug('to retrieve hosts of account_id: %s', account_id)
 
-    # TODO: Check cached account list before proceed
+    # TO-DO: Check cached account list before proceed
 
     headers = {"x-rh-identity": b64_identity}
 

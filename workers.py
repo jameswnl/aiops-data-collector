@@ -2,7 +2,7 @@ import logging
 from threading import Thread
 from uuid import uuid4
 
-from target_worker import WORKER
+from collector import WORKER
 
 LOGGER = logging.getLogger()
 

@@ -9,7 +9,7 @@ from .env import (APP_NAME,
                   TOPOLOGICAL_INVENTORY_HOST, TOPOLOGICAL_INVENTORY_PATH)
 
 LOGGER = logging.getLogger()
-CONFIG_DIR = 'target_worker/configs'
+CONFIG_DIR = 'collector/configs'
 BASE_URL = f'{TOPOLOGICAL_INVENTORY_HOST}/{TOPOLOGICAL_INVENTORY_PATH}'
 
 
@@ -64,7 +64,7 @@ def _update_fk(page_data: list, fk_name: str, fk_id: str) -> dict:
 
 
 def _collect_data(url: str, fk_name: str = None,
-                  fk_id: str = None, headers: dict = {}) -> dict:
+                  fk_id: str = None, headers: dict = None) -> dict:
     """Aggregate data from all pages.
 
     Returns data aggregated from all pages together
@@ -111,7 +111,7 @@ def _collect_data(url: str, fk_name: str = None,
     return _update_fk(all_data, fk_name, fk_id)
 
 
-def _query_main_collection(collection: str, headers: dict = {}) -> dict:
+def _query_main_collection(collection: str, headers: dict = None) -> dict:
     """Query a Collection.
 
     Parameters
@@ -138,7 +138,7 @@ def _query_sub_collection(
         sub_collection: str,
         data: dict,
         foreign_key: str,
-        headers: dict = {}
+        headers: dict = None
 ) -> dict:
     """Query a SubCollection for all records in the main collection.
 

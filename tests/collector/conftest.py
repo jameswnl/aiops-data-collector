@@ -2,7 +2,7 @@ from imp import reload
 
 import pytest
 
-import target_worker
+import collector
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +22,6 @@ def patch_env(monkeypatch):
     monkeypatch.delenv('SSL_VERIFY')
 
     # Reload modules
-    reload(target_worker.env)
-    reload(target_worker.host_inventory)
-    reload(target_worker.topological_inventory)
+    reload(collector.env)
+    reload(collector.host_inventory)
+    reload(collector.topological_inventory)
