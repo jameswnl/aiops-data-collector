@@ -1,0 +1,38 @@
+container_nodes:
+    main_collection: container_nodes?filter[archived_at][nil]
+
+container_nodes_tags:
+    main_collection: container_nodes
+    sub_collection: tags
+    foreign_key: container_node_id
+
+volume_attachments:
+    main_collection: volume_attachments
+
+volumes:
+    main_collection: volumes?filter[archived_at][nil]
+
+volume_types:
+    main_collection: volume_types
+
+vms:
+    main_collection: vms?filter[archived_at][nil]
+
+sources:
+    main_collection: sources
+
+container_groups:
+    main_collection: container_groups?filter[archived_at][nil]
+
+containers:
+    main_collection: container_groups?filter[archived_at][nil]
+    sub_collection: containers
+
+container_resource_quotas:
+    main_collection: container_resource_quotas?filter[archived_at][nil]
+
+container_projects:
+    main_collection: container_projects?filter[archived_at][nil]
+
+flavors:
+    main_collection: flavors

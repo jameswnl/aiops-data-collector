@@ -22,13 +22,14 @@ TOPOLOGICAL_INVENTORY_PATH = os.environ.get('TOPOLOGICAL_INVENTORY_PATH')
 HOST_INVENTORY_HOST = os.environ.get('HOST_INVENTORY_HOST')
 HOST_INVENTORY_PATH = os.environ.get('HOST_INVENTORY_PATH')
 INPUT_DATA_FORMAT = os.environ.get('INPUT_DATA_FORMAT', '').upper()
+APP_NAME = os.environ.get('APP_NAME')
 
 # Decide which worker should be used
 if INPUT_DATA_FORMAT == 'TOPOLOGY':
     LOGGER.info('Target Worker is Topology')
     WORKER = topology
 
-    if not(TOPOLOGICAL_INVENTORY_HOST and  TOPOLOGICAL_INVENTORY_PATH):
+    if not(TOPOLOGICAL_INVENTORY_HOST and TOPOLOGICAL_INVENTORY_PATH):
         LOGGER.error('Environment not set properly, for topological worker')
         sys.exit(1)
 
