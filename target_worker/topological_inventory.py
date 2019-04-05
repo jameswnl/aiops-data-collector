@@ -63,7 +63,8 @@ def _update_fk(page_data: list, fk_name: str, fk_id: str) -> dict:
     return page_data
 
 
-def _collect_data(url: str, fk_name: str = None, fk_id: str = None) -> dict:
+def _collect_data(url: str, fk_name: str = None,
+                  fk_id: str = None, headers: dict = {}) -> dict:
     """Aggregate data from all pages.
 
     Returns data aggregated from all pages together
@@ -90,7 +91,7 @@ def _collect_data(url: str, fk_name: str = None, fk_id: str = None) -> dict:
     """
     # Collect data from the first page
     prometheus_metrics.METRICS['gets'].inc()
-    resp = utils.retryable('get', url)
+    resp = utils.retryable('get', url, headers=headers)
     prometheus_metrics.METRICS['get_successes'].inc()
     resp = resp.json()
     all_data = resp['data']
@@ -99,7 +100,9 @@ def _collect_data(url: str, fk_name: str = None, fk_id: str = None) -> dict:
     while resp['links'].get('next'):
         prometheus_metrics.METRICS['gets'].inc()
         resp = utils.retryable(
-            'get', f'{TOPOLOGICAL_INVENTORY_HOST}{resp["links"]["next"]}'
+            'get',
+            f'{TOPOLOGICAL_INVENTORY_HOST}{resp["links"]["next"]}',
+            headers=headers
         )
         resp = resp.json()
         prometheus_metrics.METRICS['get_successes'].inc()
@@ -108,7 +111,7 @@ def _collect_data(url: str, fk_name: str = None, fk_id: str = None) -> dict:
     return _update_fk(all_data, fk_name, fk_id)
 
 
-def _query_main_collection(collection: str) -> dict:
+def _query_main_collection(collection: str, headers: dict = {}) -> dict:
     """Query a Collection.
 
     Parameters
@@ -127,14 +130,15 @@ def _query_main_collection(collection: str) -> dict:
         Connection failed, data is not complete
 
     """
-    return _collect_data(f'{BASE_URL}/{collection}')
+    return _collect_data(f'{BASE_URL}/{collection}', headers=headers)
 
 
 def _query_sub_collection(
         main_collection: str,
         sub_collection: str,
         data: dict,
-        foreign_key: str
+        foreign_key: str,
+        headers: dict = {}
 ) -> dict:
     """Query a SubCollection for all records in the main collection.
 
@@ -160,10 +164,11 @@ def _query_sub_collection(
         Connection failed, data is not complete
 
     """
+    url = f'{BASE_URL}/{main_collection}/{{}}/{sub_collection}'
     all_data = []
     for item in data[main_collection]:
-        url = f'{BASE_URL}/{main_collection}/{item["id"]}/{sub_collection}'
-        all_data += _collect_data(url, item['id'], foreign_key)
+        all_data += _collect_data(url.format(item['id']), item['id'],
+                                  foreign_key, headers=headers)
     return all_data
 
 
@@ -190,6 +195,7 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
         'id': source_id,
         'data': {}
     }
+    headers = {"x-rh-identity": b64_identity}
 
     for entity in APP_CONFIG:
         query_spec = QUERIES[entity]
@@ -203,7 +209,8 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
                     main_collection,
                     sub_collection,
                     data['data'],
-                    foreign_key
+                    foreign_key,
+                    headers=headers
                 )
             except utils.RetryFailedError as exception:
                 prometheus_metrics.METRICS['get_errors'].inc()
@@ -214,7 +221,10 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
                 return
         else:
             try:
-                all_data = _query_main_collection(main_collection)
+                all_data = _query_main_collection(
+                    main_collection,
+                    headers=headers
+                )
             except utils.RetryFailedError as exception:
                 prometheus_metrics.METRICS['get_errors'].inc()
                 LOGGER.error(
@@ -223,10 +233,13 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
                 )
                 return
 
+        LOGGER.info(
+            '%s: %s: %s\t%s',
+            thread.name, source_id, entity, len(all_data)
+        )
         data['data'][entity] = all_data
 
     # Pass to next service
-    headers = {"x-rh-identity": b64_identity}
     prometheus_metrics.METRICS['posts'].inc()
     try:
         utils.retryable('post', dest, json=data, headers=headers)

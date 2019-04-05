@@ -36,7 +36,6 @@ def retryable(method: str, *args, **kwargs) -> requests.Response:
 
     with requests.Session() as session:
         for attempt in range(MAX_RETRIES):
-            LOGGER.debug('Accessing url:\t %s', args[0])
             try:
                 resp = getattr(session, method)(*args, **request_kwargs)
 
