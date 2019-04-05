@@ -8,8 +8,7 @@ import yaml
 
 import workers
 import prometheus_metrics
-
-from collect_json_schema import CollectJSONSchema
+import schemas
 
 
 def create_application():
@@ -36,9 +35,6 @@ if PATH_PREFIX:
     APP_NAME = os.environ.get('APP_NAME', '')
     ROUTE_PREFIX = f'/{PATH_PREFIX}/{APP_NAME}'
 
-# Schema for the Collect API
-SCHEMA = CollectJSONSchema()
-
 
 @APP.route(f'{ROUTE_PREFIX}/', methods=['GET'], strict_slashes=False)
 def get_root():
@@ -64,7 +60,8 @@ def get_version():
 def post_collect():
     """Endpoint servicing data collection."""
     input_data = request.get_json(force=True)
-    validation = SCHEMA.load(input_data)
+    schema = schemas.CollectSchema()
+    validation = schema.load(input_data)
     prometheus_metrics.METRICS['jobs_total'].inc()
 
     if validation.errors:

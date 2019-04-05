@@ -1,1 +1,1 @@
-"""Testsuite for `collector` module."""
+"""Testsuite for collector module."""
