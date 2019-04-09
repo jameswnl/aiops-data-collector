@@ -25,7 +25,7 @@ class TestRetrieveHosts:
         assert results['results'] == list(range(4))
         retryable.assert_called_once_with(
             'get',
-            'http://inventory:8080/api/inventory/vX/hosts?per_page=50&page=1',
+            'http://inventory:8080/api/inventory/vX/hosts?page=1',
             headers={"x-rh-identity": 'identity_b64'}
         )
 
@@ -50,11 +50,11 @@ class TestRetrieveHosts:
         assert retryable.call_count == 2
         retryable.assert_any_call(
             'get',
-            'http://inventory:8080/api/inventory/vX/hosts?per_page=50&page=1',
+            'http://inventory:8080/api/inventory/vX/hosts?page=1',
             headers={"x-rh-identity": 'identity_b64'}
         )
         retryable.assert_any_call(
             'get',
-            'http://inventory:8080/api/inventory/vX/hosts?per_page=50&page=2',
+            'http://inventory:8080/api/inventory/vX/hosts?page=2',
             headers={"x-rh-identity": 'identity_b64'}
         )

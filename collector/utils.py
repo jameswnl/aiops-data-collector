@@ -5,7 +5,6 @@ import requests
 
 from .env import SSL_VERIFY
 
-CHUNK = 10240
 MAX_RETRIES = 3
 LOGGER = logging.getLogger()
 

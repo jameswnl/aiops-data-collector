@@ -25,8 +25,9 @@ container_groups:
     main_collection: container_groups?filter[archived_at][nil]
 
 containers:
-    main_collection: container_groups?filter[archived_at][nil]
+    main_collection: container_groups
     sub_collection: containers
+    foreign_key: container_group_id
 
 container_resource_quotas:
     main_collection: container_resource_quotas?filter[archived_at][nil]

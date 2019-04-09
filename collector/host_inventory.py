@@ -27,7 +27,7 @@ def _retrieve_hosts(headers: dict) -> dict:
         Host collection
 
     """
-    url = URL + '/hosts?per_page=50&page={}'
+    url = URL + '/hosts?page={}'
 
     # Perform initial request
     prometheus_metrics.METRICS['gets'].inc()
