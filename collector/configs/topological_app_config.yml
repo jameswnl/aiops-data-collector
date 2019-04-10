@@ -1,0 +1,19 @@
+aiops-volume-type-validation:
+  - container_nodes
+  - container_nodes_tags
+  - vms
+  - sources
+  - volume_attachments
+  - volumes
+  - volume_types
+
+aiops-idle-cost-savings:
+  - container_nodes
+  - container_nodes_tags
+  - vms
+  - sources
+  - container_groups
+  - containers
+  - container_resource_quotas
+  - container_projects
+  - flavors

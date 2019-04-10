@@ -9,16 +9,12 @@ import yaml
 import workers
 import prometheus_metrics
 
-from collect_json_schema import CollectJSONSchema
-
 
 def create_application():
     """Create Flask application instance with AWS client enabled."""
     app = Flask(__name__)
-    app.config['NEXT_SERVICE_URL'] = \
-        os.environ.get('NEXT_SERVICE_URL')
-    app.config['APP_NAME'] = \
-        os.environ.get('APP_NAME')
+    app.config['NEXT_SERVICE_URL'] = os.environ.get('NEXT_SERVICE_URL')
+    app.config['APP_NAME'] = os.environ.get('APP_NAME')
 
     return app
 
@@ -27,6 +23,8 @@ APP = create_application()
 ROOT_LOGGER = logging.getLogger()
 ROOT_LOGGER.setLevel(APP.logger.level)
 ROOT_LOGGER.addHandler(default_handler)
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 API_VERSION = '1.0'
 
@@ -35,9 +33,6 @@ PATH_PREFIX = os.environ.get('PATH_PREFIX')
 if PATH_PREFIX:
     APP_NAME = os.environ.get('APP_NAME', '')
     ROUTE_PREFIX = f'/{PATH_PREFIX}/{APP_NAME}'
-
-# Schema for the Collect API
-SCHEMA = CollectJSONSchema()
 
 
 @APP.route(f'{ROUTE_PREFIX}/', methods=['GET'], strict_slashes=False)
@@ -63,30 +58,25 @@ def get_version():
 @APP.route(f'{ROUTE_PREFIX}/v{API_VERSION}/collect', methods=['POST'])
 def post_collect():
     """Endpoint servicing data collection."""
-    input_data = request.get_json(force=True)
-    validation = SCHEMA.load(input_data)
     prometheus_metrics.METRICS['jobs_total'].inc()
-
-    if validation.errors:
-        prometheus_metrics.METRICS['jobs_denied'].inc()
-        return jsonify(
-            status='Error',
-            errors=validation.errors,
-            version=API_VERSION,
-            message='Input payload validation failed'
-        ), 400
-
-    next_service = APP.config['NEXT_SERVICE_URL']
-    app_name = APP.config['APP_NAME']
-    source_id = input_data.get('payload_id')
+    input_data = request.get_json(force=True) if request.get_data() else {}
 
     b64_identity = request.headers.get('x-rh-identity')
+    if not b64_identity:
+        prometheus_metrics.METRICS['jobs_denied'].inc()
+        return jsonify(
+            status='Unauthorized',
+            version=API_VERSION,
+            message="Missing 'x-rh-identity' header"
+        ), 401
+
+    next_service = APP.config['NEXT_SERVICE_URL']
+    source_id = input_data.get('payload_id')
 
     workers.download_job(
         input_data.get('url'),
         source_id,
         next_service,
-        app_name,
         b64_identity
     )
     APP.logger.info('Job started.')
