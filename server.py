@@ -8,7 +8,6 @@ import yaml
 
 import workers
 import prometheus_metrics
-import schemas
 
 
 def create_application():
@@ -59,24 +58,20 @@ def get_version():
 @APP.route(f'{ROUTE_PREFIX}/v{API_VERSION}/collect', methods=['POST'])
 def post_collect():
     """Endpoint servicing data collection."""
-    input_data = request.get_json(force=True)
-    schema = schemas.CollectSchema()
-    validation = schema.load(input_data)
     prometheus_metrics.METRICS['jobs_total'].inc()
+    input_data = request.get_json(force=True) if request.get_data() else {}
 
-    if validation.errors:
+    b64_identity = request.headers.get('x-rh-identity')
+    if not b64_identity:
         prometheus_metrics.METRICS['jobs_denied'].inc()
         return jsonify(
-            status='Error',
-            errors=validation.errors,
+            status='Unauthorized',
             version=API_VERSION,
-            message='Input payload validation failed'
-        ), 400
+            message="Missing 'x-rh-identity' header"
+        ), 401
 
     next_service = APP.config['NEXT_SERVICE_URL']
     source_id = input_data.get('payload_id')
-
-    b64_identity = request.headers.get('x-rh-identity')
 
     workers.download_job(
         input_data.get('url'),

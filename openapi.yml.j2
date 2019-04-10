@@ -21,8 +21,8 @@ paths:
                   version:
                     type: string
                     example: '{{ api_version }}'
-        '400':
-          description: Input payload validation failed
+        '401':
+          description: "Client error: Request unauthorized"
           content:
             application/json:
               schema:
@@ -30,10 +30,10 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Input payload validation failed
+                    example: Missing 'x-rh-identity' header
                   status:
                     type: string
-                    example: Error
+                    example: Unauthorized
                   version:
                     type: string
                     example: '{{ api_version }}'
