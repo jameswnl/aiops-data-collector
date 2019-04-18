@@ -15,8 +15,14 @@ CFG_DIR = '{}/configs'.format(os.path.dirname(__file__))
 
 # Provide mapping for all available services, default to TOPOLOGICAL
 SERVICES_URL = defaultdict(
-    lambda: f'{TOPOLOGICAL_INVENTORY_HOST}/{TOPOLOGICAL_INVENTORY_PATH}',
-    SOURCES=f'{SOURCES_HOST}/{SOURCES_PATH}'
+    lambda: dict(
+        host=TOPOLOGICAL_INVENTORY_HOST,
+        path=TOPOLOGICAL_INVENTORY_PATH
+    ),
+    SOURCES=dict(
+        host=SOURCES_HOST,
+        path=SOURCES_PATH
+    )
 )
 
 
@@ -70,7 +76,7 @@ def _update_fk(page_data: list, fk_name: str, fk_id: str) -> dict:
     return page_data
 
 
-def _collect_data(url: str, fk_name: str = None,
+def _collect_data(host: dict, url: str, fk_name: str = None,
                   fk_id: str = None, headers: dict = None) -> dict:
     """Aggregate data from all pages.
 
@@ -78,6 +84,8 @@ def _collect_data(url: str, fk_name: str = None,
 
     Parameters
     ----------
+    host (str)
+        Service host
     url (str)
         URI to the first page, where to start the traverse
     fk_name (str)
@@ -97,6 +105,7 @@ def _collect_data(url: str, fk_name: str = None,
 
     """
     # Collect data from the first page
+    url = f'{host["host"]}/{host["path"]}/{url}'
     prometheus_metrics.METRICS['gets'].inc()
     resp = utils.retryable('get', url, headers=headers)
     prometheus_metrics.METRICS['get_successes'].inc()
@@ -108,7 +117,7 @@ def _collect_data(url: str, fk_name: str = None,
         prometheus_metrics.METRICS['gets'].inc()
         resp = utils.retryable(
             'get',
-            f'{TOPOLOGICAL_INVENTORY_HOST}{resp["links"]["next"]}',
+            f'{host["host"]}{resp["links"]["next"]}',
             headers=headers
         )
         resp = resp.json()
@@ -138,9 +147,9 @@ def _query_main_collection(entity: dict, headers: dict = None) -> dict:
 
     """
     collection = entity['main_collection']
-    base_url = SERVICES_URL[entity.get('service')]
+    service = SERVICES_URL[entity.get('service')]
 
-    return _collect_data(f'{base_url}/{collection}', headers=headers)
+    return _collect_data(service, collection, headers=headers)
 
 
 def _query_sub_collection(entity: dict, data: dict,
@@ -170,13 +179,13 @@ def _query_sub_collection(entity: dict, data: dict,
     main_collection = entity['main_collection']
     sub_collection = entity['sub_collection']
     foreign_key = entity['foreign_key']
-    base_url = SERVICES_URL[entity.get('service')]
+    service = SERVICES_URL[entity.get('service')]
 
-    url = f'{base_url}/{main_collection}/{{}}/{sub_collection}'
+    url = f'{main_collection}/{{}}/{sub_collection}'
     all_data = []
     for item in data[main_collection]:
-        all_data += _collect_data(url.format(item['id']), foreign_key,
-                                  item['id'], headers=headers)
+        all_data += _collect_data(service, url.format(item['id']),
+                                  foreign_key, item['id'], headers=headers)
     return all_data
 
 
