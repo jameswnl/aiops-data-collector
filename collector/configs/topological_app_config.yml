@@ -17,3 +17,13 @@ aiops-idle-cost-savings:
   - container_resource_quotas
   - container_projects
   - flavors
+
+aiops-instance-type-validation:
+  - container_nodes
+  - container_nodes_tags
+  - container_images
+  - container_images_tags
+  - container_groups
+  - containers
+  - vms
+  - sources

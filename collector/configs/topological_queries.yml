@@ -6,6 +6,11 @@ container_nodes_tags:
     sub_collection: tags
     foreign_key: container_node_id
 
+container_images_tags:
+    main_collection: container_images
+    sub_collection: tags
+    foreign_key: container_image_id
+
 volume_attachments:
     main_collection: volume_attachments
 
@@ -26,7 +31,7 @@ container_groups:
 
 containers:
     main_collection: container_groups
-    sub_collection: containers
+    sub_collection: containers?filter[archived_at][nil]
     foreign_key: container_group_id
 
 container_resource_quotas:
@@ -34,6 +39,9 @@ container_resource_quotas:
 
 container_projects:
     main_collection: container_projects?filter[archived_at][nil]
+
+container_images:
+    main_collection: container_images?filter[archived_at][nil]
 
 flavors:
     main_collection: flavors
