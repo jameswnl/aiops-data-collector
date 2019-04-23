@@ -1,17 +1,29 @@
 import logging
 import os
 from threading import current_thread
+from collections import defaultdict
 
 import yaml
 
 import prometheus_metrics
 from . import utils
-from .env import (APP_NAME,
+from .env import (APP_NAME, SOURCES_HOST, SOURCES_PATH,
                   TOPOLOGICAL_INVENTORY_HOST, TOPOLOGICAL_INVENTORY_PATH)
 
 LOGGER = logging.getLogger()
 CFG_DIR = '{}/configs'.format(os.path.dirname(__file__))
-BASE_URL = f'{TOPOLOGICAL_INVENTORY_HOST}/{TOPOLOGICAL_INVENTORY_PATH}'
+
+# Provide mapping for all available services, default to TOPOLOGICAL
+SERVICES_URL = defaultdict(
+    lambda: dict(
+        host=TOPOLOGICAL_INVENTORY_HOST,
+        path=TOPOLOGICAL_INVENTORY_PATH
+    ),
+    SOURCES=dict(
+        host=SOURCES_HOST,
+        path=SOURCES_PATH
+    )
+)
 
 
 def _load_yaml(filename: str) -> dict:
@@ -64,7 +76,7 @@ def _update_fk(page_data: list, fk_name: str, fk_id: str) -> dict:
     return page_data
 
 
-def _collect_data(url: str, fk_name: str = None,
+def _collect_data(host: dict, url: str, fk_name: str = None,
                   fk_id: str = None, headers: dict = None) -> dict:
     """Aggregate data from all pages.
 
@@ -72,6 +84,8 @@ def _collect_data(url: str, fk_name: str = None,
 
     Parameters
     ----------
+    host (str)
+        Service host
     url (str)
         URI to the first page, where to start the traverse
     fk_name (str)
@@ -91,6 +105,7 @@ def _collect_data(url: str, fk_name: str = None,
 
     """
     # Collect data from the first page
+    url = f'{host["host"]}/{host["path"]}/{url}'
     prometheus_metrics.METRICS['gets'].inc()
     resp = utils.retryable('get', url, headers=headers)
     prometheus_metrics.METRICS['get_successes'].inc()
@@ -102,7 +117,7 @@ def _collect_data(url: str, fk_name: str = None,
         prometheus_metrics.METRICS['gets'].inc()
         resp = utils.retryable(
             'get',
-            f'{TOPOLOGICAL_INVENTORY_HOST}{resp["links"]["next"]}',
+            f'{host["host"]}{resp["links"]["next"]}',
             headers=headers
         )
         resp = resp.json()
@@ -112,13 +127,13 @@ def _collect_data(url: str, fk_name: str = None,
     return _update_fk(all_data, fk_name, fk_id)
 
 
-def _query_main_collection(collection: str, headers: dict = None) -> dict:
+def _query_main_collection(entity: dict, headers: dict = None) -> dict:
     """Query a Collection.
 
     Parameters
     ----------
-    collection (str)
-        A collection to download
+    entity (dict)
+        A query_spec entity to download
 
     Returns
     -------
@@ -131,24 +146,20 @@ def _query_main_collection(collection: str, headers: dict = None) -> dict:
         Connection failed, data is not complete
 
     """
-    return _collect_data(f'{BASE_URL}/{collection}', headers=headers)
+    collection = entity['main_collection']
+    service = SERVICES_URL[entity.get('service')]
+
+    return _collect_data(service, collection, headers=headers)
 
 
-def _query_sub_collection(
-        main_collection: str,
-        sub_collection: str,
-        data: dict,
-        foreign_key: str,
-        headers: dict = None
-) -> dict:
+def _query_sub_collection(entity: dict, data: dict,
+                          headers: dict = None) -> dict:
     """Query a SubCollection for all records in the main collection.
 
     Parameters
     ----------
-    main_collection (str)
-        A parent collection pointer
-    sub_collection (str)
-        A collection to download
+    entity (dict)
+        A query_spec entity to download
     data (dict)
         Already available data for reference
     foreign_key (str)
@@ -165,11 +176,16 @@ def _query_sub_collection(
         Connection failed, data is not complete
 
     """
-    url = f'{BASE_URL}/{main_collection}/{{}}/{sub_collection}'
+    main_collection = entity['main_collection']
+    sub_collection = entity['sub_collection']
+    foreign_key = entity['foreign_key']
+    service = SERVICES_URL[entity.get('service')]
+
+    url = f'{main_collection}/{{}}/{sub_collection}'
     all_data = []
     for item in data[main_collection]:
-        all_data += _collect_data(url.format(item['id']), foreign_key,
-                                  item['id'], headers=headers)
+        all_data += _collect_data(service, url.format(item['id']),
+                                  foreign_key, item['id'], headers=headers)
     return all_data
 
 
@@ -200,17 +216,12 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
 
     for entity in APP_CONFIG:
         query_spec = QUERIES[entity]
-        main_collection = query_spec.get('main_collection')
-        sub_collection = query_spec.get('sub_collection')
-        foreign_key = query_spec.get('foreign_key')
 
-        if sub_collection:
+        if query_spec.get('sub_collection'):
             try:
                 all_data = _query_sub_collection(
-                    main_collection,
-                    sub_collection,
+                    query_spec,
                     data['data'],
-                    foreign_key,
                     headers=headers
                 )
             except utils.RetryFailedError as exception:
@@ -222,10 +233,7 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
                 return
         else:
             try:
-                all_data = _query_main_collection(
-                    main_collection,
-                    headers=headers
-                )
+                all_data = _query_main_collection(query_spec, headers=headers)
             except utils.RetryFailedError as exception:
                 prometheus_metrics.METRICS['get_errors'].inc()
                 LOGGER.error(

@@ -20,6 +20,7 @@ vms:
 
 sources:
     main_collection: sources
+    service: SOURCES
 
 container_groups:
     main_collection: container_groups?filter[archived_at][nil]
