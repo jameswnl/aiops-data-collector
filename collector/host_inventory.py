@@ -2,15 +2,60 @@ import base64
 import json
 import logging
 import math
-
 from threading import current_thread
+
+import redis
 
 import prometheus_metrics
 from . import utils
-from .env import HOST_INVENTORY_HOST, HOST_INVENTORY_PATH
+from .env import HOST_INVENTORY_HOST, HOST_INVENTORY_PATH, \
+    REDIS_ENV, REDIS_PASSWORD, PROCESS_WINDOW
 
 LOGGER = logging.getLogger()
 URL = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}'
+
+
+def connect_redis(env: str, password: str) -> redis.Redis:
+    """Connect to redis.
+
+    Parameters
+    ----------
+    env (str)
+        loadable by json.loads() containing host, port etc
+    password (str)
+        password to redis server
+
+    Returns
+    -------
+    redis.Redis
+        connection to redis server
+
+    """
+    LOGGER.info('connect_redis, env=%s', env)
+    try:
+        if env and password:
+            params = json.loads(env)
+            conn = redis.Redis(**params, password=password)
+            conn.get('TEST')
+            LOGGER.info('Connected to redis server: %s', env)
+            return conn
+    except (redis.exceptions.ConnectionError, redis.exceptions.ResponseError):
+        LOGGER.exception('Failed connecting to redis %s', env)
+    LOGGER.warning('Do not have connection to redis server: %s', env)
+    return None
+
+
+REDIS = connect_redis(REDIS_ENV, REDIS_PASSWORD)
+
+
+def processed(redis: redis.Redis, account_id: str) -> bool:
+    """If an account has been processed within the window."""
+    if redis and account_id:
+        if redis.incr(account_id) == 1:
+            redis.expire(account_id, PROCESS_WINDOW)
+        else:
+            return True
+    return False
 
 
 def _retrieve_hosts(headers: dict) -> dict:
@@ -79,7 +124,10 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
     account_id = identity.get('identity', {}).get('account_number')
     LOGGER.debug('to retrieve hosts of account_id: %s', account_id)
 
-    # TO-DO: Check cached account list before proceed
+    # Check if this account has been proceed within the window
+    if processed(REDIS, account_id):
+        LOGGER.info("Account %s processed previously, skipping it", account_id)
+        return
 
     headers = {"x-rh-identity": b64_identity}
 
