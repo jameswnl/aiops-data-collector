@@ -113,14 +113,16 @@ class TestRedisLookup:
         """When account not processed before."""
         redis = mocker.MagicMock()
         redis.incr.return_value = 1
-        assert not collector.host_inventory.processed(redis, 'abc')
+        mocker.patch.object(collector.utils, 'REDIS', redis)
+        assert not collector.utils.processed('abc')
         redis.expire.assert_called_once_with(
             'abc',
-            collector.host_inventory.PROCESS_WINDOW
+            collector.utils.PROCESS_WINDOW
         )
 
     def test_processed_before(self, mocker):
         """When account processed before."""
         redis = mocker.MagicMock()
         redis.incr.return_value = 2
-        assert collector.host_inventory.processed(redis, 'abc')
+        mocker.patch.object(collector.utils, 'REDIS', redis)
+        assert collector.utils.processed('abc')

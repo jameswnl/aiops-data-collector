@@ -4,26 +4,12 @@ import logging
 import math
 from threading import current_thread
 
-import redis
-
 import prometheus_metrics
 from . import utils
-from .env import HOST_INVENTORY_HOST, HOST_INVENTORY_PATH, \
-    REDIS_ENV, REDIS_PASSWORD, PROCESS_WINDOW
+from .env import HOST_INVENTORY_HOST, HOST_INVENTORY_PATH
 
 LOGGER = logging.getLogger()
 URL = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}'
-
-
-REDIS = redis.Redis(**json.loads(REDIS_ENV), password=REDIS_PASSWORD)
-
-
-def processed(redis: redis.Redis, account_id: str) -> bool:
-    """If an account has been processed within the window."""
-    if redis.incr(account_id) == 1:
-        redis.expire(account_id, PROCESS_WINDOW)
-        return False
-    return True
 
 
 def _retrieve_hosts(headers: dict) -> dict:
@@ -93,7 +79,7 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
     LOGGER.debug('to retrieve hosts of account_id: %s', account_id)
 
     # Check if this account has been proceed within the window
-    if account_id and processed(REDIS, account_id):
+    if account_id and utils.processed(account_id):
         LOGGER.info("Account %s processed previously, skipping it", account_id)
         return
 
