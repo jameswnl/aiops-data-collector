@@ -104,3 +104,23 @@ class TestRetrieveHosts:
             ),
         ]
         assert retryable.call_args_list == calls
+
+
+class TestRedisLookup:
+    """Test lookup logic."""
+
+    def test_not_processed_yet(self, mocker):
+        """When account not processed before."""
+        redis = mocker.MagicMock()
+        redis.incr.return_value = 1
+        assert not collector.host_inventory.processed(redis, 'abc')
+        redis.expire.assert_called_once_with(
+            'abc',
+            collector.host_inventory.PROCESS_WINDOW
+        )
+
+    def test_processed_before(self, mocker):
+        """When account processed before."""
+        redis = mocker.MagicMock()
+        redis.incr.return_value = 2
+        assert collector.host_inventory.processed(redis, 'abc')
