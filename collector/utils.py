@@ -17,12 +17,14 @@ requests.packages.urllib3.disable_warnings()
 REDIS = redis.Redis(**json.loads(REDIS_ENV), password=REDIS_PASSWORD)
 
 
-def processed(account_id: str) -> bool:
+def processed(key: str) -> bool:
     """If an account has been processed within the window."""
-    if REDIS.incr(account_id) == 1:
-        REDIS.expire(account_id, PROCESS_WINDOW)
-        return False
-    return True
+    return REDIS.get(key)
+
+
+def set_processed(key: str) -> None:
+    """Flag an account as processed with TTL."""
+    REDIS.set(key, 1, ex=PROCESS_WINDOW)
 
 
 class RetryFailedError(requests.HTTPError):
