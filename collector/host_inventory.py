@@ -28,20 +28,29 @@ def _retrieve_hosts(headers: dict) -> dict:
 
     """
     url = URL + '/hosts?page={}'
+    url_profile = URL + '/hosts/{}/system_profile'
 
     # Perform initial request
     prometheus_metrics.METRICS['gets'].inc()
     resp = utils.retryable('get', url.format(1), headers=headers)
     prometheus_metrics.METRICS['get_successes'].inc()
     resp = resp.json()
-    results = resp['results']
     total = resp['total']
     # Iterate next pages if any
     pages = math.ceil(total / resp['per_page'])
 
+    ids = ','.join([x['id'] for x in resp['results']])
+    prometheus_metrics.METRICS['gets'].inc()
+    resp = utils.retryable('get', url_profile.format(ids), headers=headers)
+    prometheus_metrics.METRICS['get_successes'].inc()
+    results = resp.json()['results']
     for page in range(2, pages+1):
         prometheus_metrics.METRICS['gets'].inc()
         resp = utils.retryable('get', url.format(page), headers=headers)
+        prometheus_metrics.METRICS['get_successes'].inc()
+        ids = ','.join([x['id'] for x in resp.json()['results']])
+        prometheus_metrics.METRICS['gets'].inc()
+        resp = utils.retryable('get', url_profile.format(ids), headers=headers)
         prometheus_metrics.METRICS['get_successes'].inc()
         results += resp.json()['results']
 
