@@ -192,7 +192,7 @@ def _query_sub_collection(entity: dict, data: dict,
     return all_data
 
 
-def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
+def worker(_: str, source_id: str, dest: str, misc: dict) -> None:
     """Worker for topological inventory.
 
     Parameters
@@ -203,13 +203,15 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
         Job identifier
     dest (str)
         URL where to pass data
-    b64_identity (str)
-        Red Hat Identity base64 string
+    misc (dict)
+        contains e.g. Red Hat Identity base64 string and account_id
 
     """
     thread = current_thread()
     LOGGER.debug('%s: Worker started', thread.name)
 
+    b64_identity = misc['b64_identity']
+    account_id = misc['account_id']
     headers = {"x-rh-identity": b64_identity}
 
     if ALL_TENANTS:
@@ -229,7 +231,7 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
     else:
         LOGGER.info('Fetching data for current Tenant')
         topological_inventory_data(_, source_id, dest, headers, thread)
-
+    utils.set_processed(account_id)
     LOGGER.debug('%s: Done, exiting', thread.name)
 
 
@@ -308,7 +310,6 @@ def topological_inventory_data(
     prometheus_metrics.METRICS['posts'].inc()
     try:
         utils.retryable('post', dest, json=data, headers=headers)
-        utils.set_processed(account_id)
         prometheus_metrics.METRICS['post_successes'].inc()
     except utils.RetryFailedError as exception:
         LOGGER.error(

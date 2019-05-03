@@ -1,5 +1,3 @@
-import base64
-import json
 import logging
 import math
 from threading import current_thread
@@ -56,7 +54,7 @@ def _retrieve_hosts(headers: dict) -> dict:
     return dict(results=results, total=total)
 
 
-def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
+def worker(_: str, source_id: str, dest: str, misc: dict) -> None:
     """Worker for host inventory.
 
     Parameters
@@ -67,15 +65,16 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
         Job identifier
     dest (str)
         URL where to pass data
-    b64_identity (str)
-        Red Hat Identity base64 string
+    misc (dict)
+        contains e.g. Red Hat Identity base64 string and account_id
 
     """
     thread = current_thread()
     LOGGER.debug('%s: Worker started', thread.name)
 
-    identity = json.loads(base64.b64decode(b64_identity))
-    account_id = identity.get('identity', {}).get('account_number')
+    b64_identity = misc['b64_identity']
+    account_id = misc['account_id']
+
     LOGGER.debug('to retrieve hosts of account_id: %s', account_id)
 
     headers = {"x-rh-identity": b64_identity}

@@ -93,7 +93,7 @@ def post_collect():
         input_data.get('url'),
         source_id,
         next_service,
-        b64_identity
+        {'b64_identity': b64_identity, 'account_id': account_id},
     )
     APP.logger.info('Job started.')
 
