@@ -1,15 +1,30 @@
+import json
 import logging
 from threading import current_thread
 
+import redis
 import requests
 
-from .env import SSL_VERIFY
+from .env import SSL_VERIFY, REDIS_ENV, REDIS_PASSWORD, PROCESS_WINDOW
 
 MAX_RETRIES = 3
 LOGGER = logging.getLogger()
 
 # pylama:ignore=E1101
 requests.packages.urllib3.disable_warnings()
+
+
+REDIS = redis.Redis(**json.loads(REDIS_ENV), password=REDIS_PASSWORD)
+
+
+def processed(key: str) -> bool:
+    """If an account has been processed within the window."""
+    return REDIS.get(key)
+
+
+def set_processed(key: str) -> None:
+    """Flag an account as processed with TTL."""
+    REDIS.set(key, 1, ex=PROCESS_WINDOW)
 
 
 class RetryFailedError(requests.HTTPError):
