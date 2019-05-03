@@ -59,7 +59,7 @@ def _csv_parser(file_obj: BytesIO) -> bytes:
 
 
 def worker(source_url: str, source_id: str,
-           dest_url: str, misc: dict) -> None:
+           dest_url: str, acct_info: dict) -> None:
     """Worker for Insights Client uploads.
 
     Parameters
@@ -70,15 +70,15 @@ def worker(source_url: str, source_id: str,
         Job identifier
     dest_url (str)
         URL where to pass data
-    misc (dict)
+    acct_info (dict)
         contains e.g. Red Hat Identity base64 string and account_id
 
     """
     thread = current_thread()
     LOGGER.debug('%s: Worker started', thread.name)
 
-    b64_identity = misc['b64_identity']
-    account_id = misc['account_id']
+    b64_identity = acct_info['b64_identity']
+    account_id = acct_info['account_id']
 
     # Fetch data
     prometheus_metrics.METRICS['gets'].inc()

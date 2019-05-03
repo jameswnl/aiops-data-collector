@@ -192,7 +192,7 @@ def _query_sub_collection(entity: dict, data: dict,
     return all_data
 
 
-def worker(_: str, source_id: str, dest: str, misc: dict) -> None:
+def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     """Worker for topological inventory.
 
     Parameters
@@ -203,15 +203,15 @@ def worker(_: str, source_id: str, dest: str, misc: dict) -> None:
         Job identifier
     dest (str)
         URL where to pass data
-    misc (dict)
+    acct_info (dict)
         contains e.g. Red Hat Identity base64 string and account_id
 
     """
     thread = current_thread()
     LOGGER.debug('%s: Worker started', thread.name)
 
-    b64_identity = misc['b64_identity']
-    account_id = misc['account_id']
+    b64_identity = acct_info['b64_identity']
+    account_id = acct_info['account_id']
     headers = {"x-rh-identity": b64_identity}
 
     if ALL_TENANTS:
