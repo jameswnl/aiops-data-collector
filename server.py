@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 import os
 
@@ -6,6 +8,7 @@ from flask.logging import default_handler
 from jinja2 import Template
 import yaml
 
+import collector
 import workers
 import prometheus_metrics
 
@@ -69,6 +72,19 @@ def post_collect():
             version=API_VERSION,
             message="Missing 'x-rh-identity' header"
         ), 401
+
+    identity = json.loads(base64.b64decode(b64_identity))
+    account_id = identity.get('identity', {}).get('account_number')
+    APP.logger.debug('Account_id: %s', account_id)
+
+    # Check if this account has been processed within the window
+    if account_id and collector.utils.processed(account_id):
+        APP.logger.info("Account %s processed before, skipping", account_id)
+        return jsonify(
+            status="OK",
+            version=API_VERSION,
+            message="Account processed before"
+        )
 
     next_service = APP.config['NEXT_SERVICE_URL']
     source_id = input_data.get('payload_id')

@@ -308,6 +308,7 @@ def topological_inventory_data(
     prometheus_metrics.METRICS['posts'].inc()
     try:
         utils.retryable('post', dest, json=data, headers=headers)
+        utils.set_processed(account_id)
         prometheus_metrics.METRICS['post_successes'].inc()
     except utils.RetryFailedError as exception:
         LOGGER.error(

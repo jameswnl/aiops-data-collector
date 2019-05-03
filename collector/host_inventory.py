@@ -78,11 +78,6 @@ def worker(_: str, source_id: str, dest: str, b64_identity: str) -> None:
     account_id = identity.get('identity', {}).get('account_number')
     LOGGER.debug('to retrieve hosts of account_id: %s', account_id)
 
-    # Check if this account has been proceed within the window
-    if account_id and utils.processed(account_id):
-        LOGGER.info("Account %s processed previously, skipping it", account_id)
-        return
-
     headers = {"x-rh-identity": b64_identity}
 
     try:

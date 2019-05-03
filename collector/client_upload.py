@@ -107,6 +107,7 @@ def worker(source_url: str, source_id: str,
             data=_csv_parser(file_obj),
             headers=headers
         )
+        utils.set_processed(account_id)
         prometheus_metrics.METRICS['post_successes'].inc()
     except utils.RetryFailedError as exception:
         LOGGER.error(
