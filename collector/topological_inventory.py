@@ -215,7 +215,9 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     headers = {"x-rh-identity": b64_identity}
 
     if ALL_TENANTS:
+        prometheus_metrics.METRICS['gets'].inc()
         resp = utils.retryable('get', TENANTS_URL, headers=headers)
+        prometheus_metrics.METRICS['get_successes'].inc()
         tenants_headers = \
             [tenant_header_info(t["external_tenant"]) for t in resp.json()]
 
