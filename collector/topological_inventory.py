@@ -226,12 +226,13 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
                          thread.name, tenant_header['acct_no'])
             headers = tenant_header['headers']
             topological_inventory_data(_, source_id, dest, headers, thread)
+            utils.set_processed(tenant_header['acct_no'])
             LOGGER.debug('%s: ---END Account# %s---',
                          thread.name, tenant_header['acct_no'])
     else:
         LOGGER.info('Fetching data for current Tenant')
         topological_inventory_data(_, source_id, dest, headers, thread)
-    utils.set_processed(account_id)
+        utils.set_processed(account_id)
     LOGGER.debug('%s: Done, exiting', thread.name)
 
 
