@@ -2,9 +2,9 @@ import json
 import logging
 from threading import current_thread
 
+import sys
 import redis
 import requests
-import sys
 
 from .env import SSL_VERIFY, REDIS_ENV, REDIS_PASSWORD, PROCESS_WINDOW
 
@@ -25,7 +25,7 @@ def ping_redis() -> str:
     """Call ping on Redis."""
     try:
         return REDIS.ping()
-    except redis.exceptions.ConnectionError as e:
+    except redis.exceptions.ConnectionError:
         LOGGER.warning('Redis Ping unsuccessful')
         return False
 
