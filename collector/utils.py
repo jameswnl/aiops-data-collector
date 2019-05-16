@@ -21,6 +21,15 @@ if not (REDIS_ENV and REDIS_PASSWORD):
 REDIS = redis.Redis(**json.loads(REDIS_ENV), password=REDIS_PASSWORD)
 
 
+def ping_redis() -> str:
+    """Call ping on Redis."""
+    try:
+        return REDIS.ping()
+    except redis.exceptions.ConnectionError as e:
+        LOGGER.warning('Redis Ping unsuccessful')
+        return False
+
+
 def processed(key: str) -> bool:
     """If an account has been processed within the window."""
     return REDIS.get(key)
