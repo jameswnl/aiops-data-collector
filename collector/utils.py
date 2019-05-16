@@ -4,6 +4,7 @@ from threading import current_thread
 
 import redis
 import requests
+import sys
 
 from .env import SSL_VERIFY, REDIS_ENV, REDIS_PASSWORD, PROCESS_WINDOW
 
@@ -13,6 +14,9 @@ LOGGER = logging.getLogger()
 # pylama:ignore=E1101
 requests.packages.urllib3.disable_warnings()
 
+if not (REDIS_ENV and REDIS_PASSWORD):
+    LOGGER.error('Environment not set properly for Redis')
+    sys.exit(1)
 
 REDIS = redis.Redis(**json.loads(REDIS_ENV), password=REDIS_PASSWORD)
 
