@@ -5,6 +5,7 @@ from threading import current_thread
 import sys
 import redis
 import requests
+from gunicorn.arbiter import Arbiter
 
 from .env import SSL_VERIFY, REDIS_ENV, REDIS_PASSWORD, PROCESS_WINDOW
 
@@ -16,7 +17,7 @@ requests.packages.urllib3.disable_warnings()
 
 if not (REDIS_ENV and REDIS_PASSWORD):
     LOGGER.error('Environment not set properly for Redis')
-    sys.exit(1)
+    sys.exit(Arbiter.APP_LOAD_ERROR)
 
 REDIS = redis.Redis(**json.loads(REDIS_ENV), password=REDIS_PASSWORD)
 
