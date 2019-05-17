@@ -26,7 +26,7 @@ def ping_redis() -> str:
     """Call ping on Redis."""
     try:
         return REDIS.ping()
-    except redis.exceptions.ConnectionError:
+    except (redis.exceptions.ConnectionError, redis.exceptions.ResponseError):
         LOGGER.warning('Redis Ping unsuccessful')
         return False
 
