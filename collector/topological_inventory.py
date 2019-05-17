@@ -6,6 +6,7 @@ from collections import defaultdict
 import base64
 import json
 import yaml
+from objsize import get_deep_size
 
 import prometheus_metrics
 from . import utils
@@ -27,6 +28,9 @@ SERVICES_URL = defaultdict(
         path=SOURCES_PATH
     )
 )
+
+
+DATA_COLLECTION_TIME = prometheus_metrics.METRICS['data_collection_time']
 
 
 def _load_yaml(filename: str) -> dict:
@@ -191,7 +195,7 @@ def _query_sub_collection(entity: dict, data: dict,
                                   foreign_key, item['id'], headers=headers)
     return all_data
 
-
+@DATA_COLLECTION_TIME.time()
 def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     """Worker for topological inventory.
 
@@ -227,14 +231,24 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
             LOGGER.debug('%s: ---START Account# %s---',
                          thread.name, tenant_header['acct_no'])
             headers = tenant_header['headers']
-            topological_inventory_data(_, source_id, dest, headers, thread)
+            data_size = topological_inventory_data(_, source_id, dest,
+                                                   headers, thread)
+            if data_size > 0:
+                prometheus_metrics.METRICS['data_size_large'].labels(
+                    account=tenant_header['acct_no']
+                ).set(data_size)
             utils.set_processed(tenant_header['acct_no'])
             LOGGER.debug('%s: ---END Account# %s---',
                          thread.name, tenant_header['acct_no'])
     else:
         LOGGER.info('Fetching data for current Tenant')
-        topological_inventory_data(_, source_id, dest, headers, thread)
+        data_size = topological_inventory_data(_, source_id, dest,
+                                               headers, thread)
+        prometheus_metrics.METRICS['data_size_large'].labels(
+            account=account_id
+        ).set(data_size)
         utils.set_processed(account_id)
+
     LOGGER.debug('%s: Done, exiting', thread.name)
 
 
@@ -244,7 +258,7 @@ def topological_inventory_data(
         dest: str,
         headers: dict,
         thread
-) -> None:
+) -> int:
     """Generate Tenant data for topological inventory.
 
     Parameters
@@ -283,7 +297,7 @@ def topological_inventory_data(
                     '%s: Unable to fetch source data for "%s": %s',
                     thread.name, source_id, exception
                 )
-                return
+                return 0
         else:
             try:
                 all_data = _query_main_collection(query_spec, headers=headers)
@@ -293,7 +307,7 @@ def topological_inventory_data(
                     '%s: Unable to fetch source data for "%s": %s',
                     thread.name, source_id, exception
                 )
-                return
+                return 0
 
         LOGGER.info(
             '%s: %s: %s\t%s',
@@ -307,7 +321,7 @@ def topological_inventory_data(
                 '%s: Inadequate Topological Inventory data for this account.',
                 thread.name
             )
-            return
+            return 0
 
     # Pass to next service
     prometheus_metrics.METRICS['posts'].inc()
@@ -320,6 +334,8 @@ def topological_inventory_data(
             thread.name, source_id, exception
         )
         prometheus_metrics.METRICS['post_errors'].inc()
+
+    return get_deep_size(data['data'])
 
 
 def tenant_header_info(acct_no):

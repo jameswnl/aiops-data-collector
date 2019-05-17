@@ -9,6 +9,7 @@ gunicorn = "*"
 prometheus_client = "*"
 requests = ">=2.20.0"
 jinja2 = "*"
+objsize = "*"
 pyyaml = "*"
 redis = "*"
 
