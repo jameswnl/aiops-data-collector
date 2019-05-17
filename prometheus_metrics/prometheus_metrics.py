@@ -1,4 +1,4 @@
-from prometheus_client import (Counter, generate_latest,
+from prometheus_client import (Counter, Gauge, Summary, generate_latest,
                                CollectorRegistry, multiprocess)
 
 # Prometheus Metrics
@@ -38,6 +38,15 @@ METRICS = {
     'post_errors': Counter(
         'aiops_data_collector_post_requests_exceptions',
         'The total number of post data request exceptions'
+    ),
+    'data_collection_time': Summary(
+        'aiops_data_collector_data_collection_time',
+        'Time spent for total data collection',
+    ),
+    'data_size_large': Gauge(
+        'aiops_data_collector_large_data_size',
+        'Size of large data in bytes',
+        ['account']
     ),
 }
 
