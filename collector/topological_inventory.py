@@ -195,6 +195,7 @@ def _query_sub_collection(entity: dict, data: dict,
                                   foreign_key, item['id'], headers=headers)
     return all_data
 
+
 @DATA_COLLECTION_TIME.time()
 def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     """Worker for topological inventory.
@@ -233,10 +234,7 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
             headers = tenant_header['headers']
             data_size = topological_inventory_data(_, source_id, dest,
                                                    headers, thread)
-            if data_size > 0:
-                prometheus_metrics.METRICS['data_size_large'].labels(
-                    account=tenant_header['acct_no']
-                ).set(data_size)
+            prometheus_metrics.METRICS['data_size'].observe(data_size)
             utils.set_processed(tenant_header['acct_no'])
             LOGGER.debug('%s: ---END Account# %s---',
                          thread.name, tenant_header['acct_no'])
@@ -244,9 +242,7 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
         LOGGER.info('Fetching data for current Tenant')
         data_size = topological_inventory_data(_, source_id, dest,
                                                headers, thread)
-        prometheus_metrics.METRICS['data_size_large'].labels(
-            account=account_id
-        ).set(data_size)
+        prometheus_metrics.METRICS['data_size'].observe(data_size)
         utils.set_processed(account_id)
 
     LOGGER.debug('%s: Done, exiting', thread.name)
