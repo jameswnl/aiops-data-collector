@@ -42,3 +42,4 @@ elif INPUT_DATA_FORMAT == 'CLIENT':
 
 else:
     LOGGER.warning('No worker set.')
+    WORKER = ''

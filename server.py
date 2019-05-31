@@ -41,11 +41,24 @@ if PATH_PREFIX:
 @APP.route(f'{ROUTE_PREFIX}/', methods=['GET'], strict_slashes=False)
 def get_root():
     """Root Endpoint for 3scale."""
+    if not collector.WORKER:
+        return_code = 500
+        status = 'Error'
+        message = 'No worker set'
+    elif not collector.utils.ping_redis():
+        return_code = 500
+        status = 'Error'
+        message = 'Required service not operational'
+    else:
+        return_code = 200
+        status = 'OK'
+        message = 'Up and Running'
+
     return jsonify(
-        status='OK',
+        status=status,
         version=API_VERSION,
-        message='Up and Running'
-    )
+        message=message
+    ), return_code
 
 
 @APP.route(f'{ROUTE_PREFIX}/v{API_VERSION}/version', methods=['GET'])
