@@ -22,7 +22,7 @@ if not (REDIS_ENV and REDIS_PASSWORD):
 REDIS = redis.Redis(**json.loads(REDIS_ENV), password=REDIS_PASSWORD)
 
 
-def ping_redis() -> str:
+def ping_redis() -> bool:
     """Call ping on Redis."""
     try:
         return REDIS.ping()
