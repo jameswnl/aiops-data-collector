@@ -75,7 +75,7 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     b64_identity = acct_info['b64_identity']
     account_id = acct_info['account_id']
 
-    LOGGER.info('to retrieve hosts of account_id: %s', account_id)
+    print('to retrieve hosts of account_id: ', account_id)
 
     headers = {"x-rh-identity": b64_identity}
 
