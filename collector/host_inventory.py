@@ -75,7 +75,7 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     b64_identity = acct_info['b64_identity']
     account_id = acct_info['account_id']
 
-    LOGGER.debug('to retrieve hosts of account_id: %s', account_id)
+    LOGGER.info('to retrieve hosts of account_id: %s', account_id)
 
     headers = {"x-rh-identity": b64_identity}
 
@@ -102,7 +102,8 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     # Pass to next service
     prometheus_metrics.METRICS['posts'].inc()
     try:
-        utils.retryable('post', dest, json=data, headers=headers)
+        if dest:
+            utils.retryable('post', dest, json=data, headers=headers)
         utils.set_processed(account_id)
         prometheus_metrics.METRICS['post_successes'].inc()
     except utils.RetryFailedError as exception:
