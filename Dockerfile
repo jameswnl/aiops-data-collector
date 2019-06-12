@@ -1,4 +1,4 @@
-from python:3
+from rhscl/python-36-rhel7
 
 COPY . /app
 WORKDIR /app
