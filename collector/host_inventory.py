@@ -92,6 +92,8 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
         'Received data for account_id=%s has total=%s',
         account_id, out.get('total')
     )
+    print('Received data for account_id has total',
+        account_id, out.get('total'))
 
     # Build the POST data object
     data = {
@@ -104,6 +106,8 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     try:
         if dest:
             utils.retryable('post', dest, json=data, headers=headers)
+        else:
+            print("skipped next service")
         utils.set_processed(account_id)
         prometheus_metrics.METRICS['post_successes'].inc()
     except utils.RetryFailedError as exception:
