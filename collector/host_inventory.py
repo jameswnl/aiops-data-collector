@@ -104,10 +104,15 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     # Pass to next service
     prometheus_metrics.METRICS['posts'].inc()
     try:
-        if dest:
-            utils.retryable('post', dest, json=data, headers=headers)
-        else:
+        if not dest:
             print("skipped next service")
+        if os.path.isdir(dest)
+            output_file = os.path.join(dest, str(account_id) + '.json'
+            with open(output_file, w) as json_file:
+                json.dump(json_file)
+        dest:
+            utils.retryable('post', dest, json=data, headers=headers)
+
         utils.set_processed(account_id)
         prometheus_metrics.METRICS['post_successes'].inc()
     except utils.RetryFailedError as exception:
