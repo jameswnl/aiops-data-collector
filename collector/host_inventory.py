@@ -1,6 +1,7 @@
 import logging
 import math
 from threading import current_thread
+from objsize import get_deep_size
 
 import prometheus_metrics
 from . import utils
@@ -84,6 +85,7 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
 
     try:
         out = _retrieve_hosts(headers)
+        prometheus_metrics.METRICS['data_size'].observe(get_deep_size(out))
     except utils.RetryFailedError as exception:
         prometheus_metrics.METRICS['get_errors'].inc()
         LOGGER.error(
