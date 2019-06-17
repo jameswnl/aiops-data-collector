@@ -9,6 +9,8 @@ from .env import HOST_INVENTORY_HOST, HOST_INVENTORY_PATH
 LOGGER = logging.getLogger()
 URL = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}'
 
+DATA_COLLECTION_TIME = prometheus_metrics.METRICS['data_collection_time']
+
 
 def _retrieve_hosts(headers: dict) -> dict:
     """Collect all hosts for account.
@@ -54,6 +56,7 @@ def _retrieve_hosts(headers: dict) -> dict:
     return dict(results=results, total=total)
 
 
+@DATA_COLLECTION_TIME.time()
 def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     """Worker for host inventory.
 
