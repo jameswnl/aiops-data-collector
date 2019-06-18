@@ -102,24 +102,23 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     }
 
     # Pass to next service
-    prometheus_metrics.METRICS['posts'].inc()
-    try:
-        if not dest:
+    if not dest:
             print("skipped next service")
-        if os.path.isdir(dest)
-            output_file = os.path.join(dest, str(account_id) + '.json'
-            with open(output_file, w) as json_file:
-                json.dump(json_file)
-        dest:
+    elif os.path.isdir(dest)
+        output_file = os.path.join(dest, str(account_id) + '.json'
+        with open(output_file, w) as json_file:
+            json.dump(json_file)
+    else:
+        prometheus_metrics.METRICS['posts'].inc()
+        try:
             utils.retryable('post', dest, json=data, headers=headers)
-
-        utils.set_processed(account_id)
-        prometheus_metrics.METRICS['post_successes'].inc()
-    except utils.RetryFailedError as exception:
-        LOGGER.error(
-            '%s: Failed to pass data for "%s": %s',
-            thread.name, source_id, exception
-        )
-        prometheus_metrics.METRICS['post_errors'].inc()
+            utils.set_processed(account_id)
+            prometheus_metrics.METRICS['post_successes'].inc()
+        except utils.RetryFailedError as exception:
+            LOGGER.error(
+                '%s: Failed to pass data for "%s": %s',
+                thread.name, source_id, exception
+            )
+            prometheus_metrics.METRICS['post_errors'].inc()
 
     LOGGER.debug('%s: Done, exiting', thread.name)
