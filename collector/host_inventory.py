@@ -1,6 +1,7 @@
 import logging
 import math
 from threading import current_thread
+from objsize import get_deep_size
 
 import prometheus_metrics
 from . import utils
@@ -8,6 +9,8 @@ from .env import HOST_INVENTORY_HOST, HOST_INVENTORY_PATH
 
 LOGGER = logging.getLogger()
 URL = f'{HOST_INVENTORY_HOST}/{HOST_INVENTORY_PATH}'
+
+DATA_COLLECTION_TIME = prometheus_metrics.METRICS['data_collection_time']
 
 
 def _retrieve_hosts(headers: dict) -> dict:
@@ -54,6 +57,7 @@ def _retrieve_hosts(headers: dict) -> dict:
     return dict(results=results, total=total)
 
 
+@DATA_COLLECTION_TIME.time()
 def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
     """Worker for host inventory.
 
@@ -81,6 +85,7 @@ def worker(_: str, source_id: str, dest: str, acct_info: dict) -> None:
 
     try:
         out = _retrieve_hosts(headers)
+        prometheus_metrics.METRICS['data_size'].observe(get_deep_size(out))
     except utils.RetryFailedError as exception:
         prometheus_metrics.METRICS['get_errors'].inc()
         LOGGER.error(
